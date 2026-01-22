@@ -1,0 +1,22 @@
+Topics covered:
+What is Python?
+When was Python created? (February 20, 1991)
+Who created Python? (Guido van Rossum)
+Why is it called Python? (Monty Python reference)
+Key features and characteristics
+What Python is used for
+Syntax and readability
+Standard library
+Python 2 vs Python 3
+Popularity and community
+Installation and setup
+Data types
+Functions and modules
+Object-oriented programming
+Error handling
+File operations
+List comprehensions and generators
+Dictionaries and sets
+Decorators
+Package management
+Performance and optimization

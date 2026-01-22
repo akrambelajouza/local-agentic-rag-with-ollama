@@ -27,7 +27,7 @@ Before you begin, ensure you have the following installed:
 
 ```bash
 git clone <repository-url>
-cd Local-RAG-with-Ollama-main
+cd local-agentic-rag-with-ollama
 ```
 
 ### 2. Create a Virtual Environment
@@ -88,7 +88,7 @@ The chatbot will open in your browser. You can now ask questions based on your d
 ## 📁 Project Structure
 
 ```
-Local-RAG-with-Ollama-main/
+local-agentic-rag-with-ollama/
 ├── 1_generate_embedding.py    # Script to generate and store embeddings
 ├── 2_start_chatbot.py         # Streamlit chatbot interface
 ├── requirements.txt            # Python dependencies

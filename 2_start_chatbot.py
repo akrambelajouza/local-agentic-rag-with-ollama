@@ -15,6 +15,7 @@ from langchain.agents import create_tool_calling_agent
 from langchain import hub
 from langchain_core.prompts import PromptTemplate
 from langchain_core.tools import tool
+from typing import Any
 
 # load environment variables
 load_dotenv()  
@@ -75,8 +76,34 @@ Source: source_url
 
 # creating the retriever tool
 @tool
-def retrieve(query: str):
+def retrieve(query: Any):
     """Retrieve information related to a query."""
+    # Handle case where LLM passes a dict instead of a string
+    if isinstance(query, dict):
+        # Handle nested dict structures like {'query': {'type': 'string'}}
+        if 'query' in query and isinstance(query['query'], dict):
+            query = query['query'].get('value', str(query['query']))
+        # Extract the actual query string from various dict formats
+        elif 'value' in query:
+            query = query['value']
+        elif 'query' in query:
+            query = query['query']
+        elif 'input' in query:
+            query = query['input']
+        elif 'text' in query:
+            query = query['text']
+        else:
+            # Try to find any string value in the dict
+            for key, value in query.items():
+                if isinstance(value, str) and value:
+                    query = value
+                    break
+            else:
+                query = str(query)
+    
+    # Ensure query is a string
+    query = str(query)
+    
     retrieved_docs = vector_store.similarity_search(query, k=2)
 
     serialized = ""
