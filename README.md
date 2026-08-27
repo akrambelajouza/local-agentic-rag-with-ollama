@@ -98,6 +98,12 @@ streamlit run app.py
 
 The chatbot will open in your browser. You can now ask questions based on your documents!
 
+Each answer is generated from retrieved evidence, and source links are rendered from
+the index metadata rather than trusted from model-generated text. Questions without
+evidence above the configured threshold receive a clear decline. Tune retrieval in
+`.env` with `RETRIEVAL_LIMIT` (maximum chunks) and `RELEVANCE_THRESHOLD` (a value
+from `0` to `1`).
+
 ## 📁 Project Structure
 
 ```

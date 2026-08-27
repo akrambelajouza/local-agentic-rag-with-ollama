@@ -21,18 +21,14 @@ class RuntimeConfigurationTests(unittest.TestCase):
             ollama_base_url="http://ollama.internal:11434",
         )
 
-    @patch("local_rag.agent.AgentExecutor")
-    @patch("local_rag.agent.create_tool_calling_agent")
     @patch("local_rag.agent.init_chat_model")
-    @patch("local_rag.agent.Chroma")
-    @patch("local_rag.agent.OllamaEmbeddings")
+    @patch("local_rag.retrieval.Chroma")
+    @patch("local_rag.retrieval.OllamaEmbeddings")
     def test_chat_clients_use_configured_ollama_url(
         self,
         embeddings: MagicMock,
         _chroma: MagicMock,
         chat_model: MagicMock,
-        _create_agent: MagicMock,
-        _executor: MagicMock,
     ) -> None:
         build_agent_executor(self.settings)
 

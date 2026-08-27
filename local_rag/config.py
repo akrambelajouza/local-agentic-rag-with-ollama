@@ -29,6 +29,8 @@ class Settings:
     chunk_overlap: int = 200
     batch_size: int = 64
     rebuild_index: bool = True
+    retrieval_limit: int = 4
+    relevance_threshold: float = 0.25
 
     @classmethod
     def from_mapping(
@@ -73,6 +75,10 @@ class Settings:
             chunk_overlap=chunk_overlap,
             batch_size=_positive_int(values, "BATCH_SIZE", 64),
             rebuild_index=_boolean(values, "REBUILD_INDEX", True),
+            retrieval_limit=_positive_int(values, "RETRIEVAL_LIMIT", 4),
+            relevance_threshold=_bounded_float(
+                values, "RELEVANCE_THRESHOLD", 0.25
+            ),
         )
 
 
@@ -129,3 +135,16 @@ def _boolean(values: Mapping[str, str | None], name: str, default: bool) -> bool
     if raw in {"0", "false", "no", "off"}:
         return False
     raise ConfigurationError(f"{name} must be true or false")
+
+
+def _bounded_float(
+    values: Mapping[str, str | None], name: str, default: float
+) -> float:
+    raw = _clean(values.get(name))
+    try:
+        value = float(raw) if raw else default
+    except ValueError as error:
+        raise ConfigurationError(f"{name} must be a number") from error
+    if not 0 <= value <= 1:
+        raise ConfigurationError(f"{name} must be between 0 and 1")
+    return value

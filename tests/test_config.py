@@ -21,6 +21,8 @@ class SettingsTests(unittest.TestCase):
                 "CHUNK_OVERLAP": "100",
                 "BATCH_SIZE": "32",
                 "REBUILD_INDEX": "false",
+                "RETRIEVAL_LIMIT": "6",
+                "RELEVANCE_THRESHOLD": "0.7",
             },
             base_directory=Path("workspace"),
         )
@@ -35,6 +37,8 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(settings.chunk_overlap, 100)
         self.assertEqual(settings.batch_size, 32)
         self.assertFalse(settings.rebuild_index)
+        self.assertEqual(settings.retrieval_limit, 6)
+        self.assertEqual(settings.relevance_threshold, 0.7)
 
     def test_reports_all_missing_required_settings(self) -> None:
         with self.assertRaisesRegex(
@@ -62,6 +66,20 @@ class SettingsTests(unittest.TestCase):
         }
 
         with self.assertRaisesRegex(ConfigurationError, "smaller than CHUNK_SIZE"):
+            Settings.from_mapping(values)
+
+    def test_rejects_relevance_threshold_outside_zero_to_one(self) -> None:
+        values = {
+            "EMBEDDING_MODEL": "embed",
+            "CHAT_MODEL": "chat",
+            "MODEL_PROVIDER": "ollama",
+            "DATASET_STORAGE_FOLDER": "fixtures",
+            "DATABASE_LOCATION": "index",
+            "COLLECTION_NAME": "rag",
+            "RELEVANCE_THRESHOLD": "1.1",
+        }
+
+        with self.assertRaisesRegex(ConfigurationError, "between 0 and 1"):
             Settings.from_mapping(values)
 
     def test_loads_dotenv_values_with_environment_overrides(self) -> None:
