@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 import re
 from typing import Any, Sequence
@@ -18,6 +19,20 @@ UNSUPPORTED_ANSWER = "The indexed collection does not contain enough evidence to
 class Citation:
     title: str
     url: str
+    excerpt: str = ""
+
+    def to_dict(self) -> dict[str, str]:
+        return {"title": self.title, "url": self.url, "excerpt": self.excerpt}
+
+    @classmethod
+    def from_dict(cls, value: object) -> Citation | None:
+        if not isinstance(value, Mapping) or "title" not in value or "url" not in value:
+            return None
+        return cls(
+            title=str(value["title"]),
+            url=str(value["url"]),
+            excerpt=str(value.get("excerpt", "")),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,9 +55,13 @@ class GroundedAssistant:
         response = self._model.invoke(
             [SystemMessage(content=_grounding_prompt(evidence)), *history, HumanMessage(question)]
         )
-        citations = tuple(
-            dict.fromkeys(Citation(item.title, item.source_url) for item in evidence)
-        )
+        citations_by_source: dict[tuple[str, str], Citation] = {}
+        for item in evidence:
+            key = (item.title, item.source_url)
+            citations_by_source.setdefault(
+                key, Citation(item.title, item.source_url, _excerpt(item.content))
+            )
+        citations = tuple(citations_by_source.values())
         return GroundedAnswer(_answer_text(response.content), citations)
 
 
@@ -75,3 +94,10 @@ def _answer_text(content: object) -> str:
     text = _MARKDOWN_LINK.sub("", text)
     text = _URL.sub("", text)
     return text.strip()
+
+
+def _excerpt(content: str, limit: int = 280) -> str:
+    compact = " ".join(content.split())
+    if len(compact) <= limit:
+        return compact
+    return compact[: limit - 1].rstrip() + "…"
