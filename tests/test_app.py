@@ -13,6 +13,8 @@ class StreamlitStartupTests(unittest.TestCase):
         self.assertEqual([exception.value for exception in app.exception], [])
         self.assertEqual([title.value for title in app.title], ["🦜 Agentic RAG Chatbot"])
         self.assertEqual(len(app.chat_input), 1)
+        self.assertTrue(app.chat_input[0].disabled)
+        self.assertTrue(any("readiness" in item.value.lower() for item in app.subheader))
 
 
 if __name__ == "__main__":

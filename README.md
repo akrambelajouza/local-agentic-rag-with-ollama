@@ -63,6 +63,13 @@ Create a `.env` file in the project root (you can use `.env.example` as a templa
 
 ### Step 1: Generate Embeddings
 
+Check every local prerequisite first. The command exits with a non-zero status and
+prints a corrective action for each failed check:
+
+```bash
+python -m local_rag.readiness
+```
+
 First, process your documents and create embeddings:
 
 ```bash

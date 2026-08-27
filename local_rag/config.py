@@ -24,6 +24,7 @@ class Settings:
     dataset_path: Path
     database_location: Path
     collection_name: str
+    ollama_base_url: str = "http://localhost:11434"
 
     @classmethod
     def from_mapping(
@@ -57,6 +58,8 @@ class Settings:
             dataset_path=_resolve(root, dataset_folder / "data.txt"),
             database_location=_resolve(root, database_location),
             collection_name=_required(values, "COLLECTION_NAME"),
+            ollama_base_url=_clean(values.get("OLLAMA_BASE_URL"))
+            or "http://localhost:11434",
         )
 
 

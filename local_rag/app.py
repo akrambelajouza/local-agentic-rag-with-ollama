@@ -7,6 +7,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from local_rag.agent import build_agent_executor
 from local_rag.config import load_settings
+from local_rag.readiness import assess_readiness
 
 
 def render_app() -> None:
@@ -14,6 +15,18 @@ def render_app() -> None:
 
     st.set_page_config(page_title="Agentic RAG Chatbot", page_icon="🦜")
     st.title("🦜 Agentic RAG Chatbot")
+
+    report = assess_readiness()
+    st.subheader("Environment readiness")
+    if report.ready:
+        st.success("Ready to answer questions locally.")
+    else:
+        st.warning("Complete the setup actions below before chatting.")
+    for check in report.checks:
+        icon = "✅" if check.ok else "❌"
+        st.write(f"{icon} **{check.label}:** {check.detail}")
+        if not check.ok and check.action:
+            st.caption(f"Action: {check.action}")
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -26,7 +39,9 @@ def render_app() -> None:
             with st.chat_message("assistant"):
                 st.markdown(message.content)
 
-    user_question = st.chat_input("How are you?")
+    user_question = st.chat_input(
+        "Ask about the indexed documents", disabled=not report.ready
+    )
     if not user_question:
         return
 

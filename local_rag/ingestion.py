@@ -47,7 +47,10 @@ def generate_embeddings(settings: Settings) -> None:
     """Rebuild the configured Chroma collection using the current behavior."""
 
     documents = load_documents(settings.dataset_path)
-    embeddings = OllamaEmbeddings(model=settings.embedding_model)
+    embeddings = OllamaEmbeddings(
+        model=settings.embedding_model,
+        base_url=settings.ollama_base_url,
+    )
 
     if settings.database_location.exists():
         shutil.rmtree(settings.database_location)
