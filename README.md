@@ -13,7 +13,7 @@ This project consists of two main components:
 
 Before you begin, ensure you have the following installed:
 
-- **Python 3.11+** - [Download Python](https://www.python.org/downloads/)
+- **Python 3.11 or 3.12** - [Download Python](https://www.python.org/downloads/)
 - **Ollama** - [Install Ollama](https://ollama.com/)
   - After installation, pull the required models:
     ```bash
@@ -47,7 +47,7 @@ source venv/bin/activate
 ### 3. Install Dependencies
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.lock
 ```
 
 ### 4. Configure Environment Variables
@@ -66,7 +66,7 @@ Create a `.env` file in the project root (you can use `.env.example` as a templa
 First, process your documents and create embeddings:
 
 ```bash
-python 1_generate_embedding.py
+python -m local_rag.ingestion
 ```
 
 This script will:
@@ -80,7 +80,7 @@ This script will:
 Once embeddings are generated, start the Streamlit chatbot interface:
 
 ```bash
-streamlit run 2_start_chatbot.py
+streamlit run app.py
 ```
 
 The chatbot will open in your browser. You can now ask questions based on your documents!
@@ -89,14 +89,26 @@ The chatbot will open in your browser. You can now ask questions based on your d
 
 ```
 local-agentic-rag-with-ollama/
-├── 1_generate_embedding.py    # Script to generate and store embeddings
-├── 2_start_chatbot.py         # Streamlit chatbot interface
-├── requirements.txt            # Python dependencies
+├── app.py                      # Canonical Streamlit launcher
+├── local_rag/                  # Importable application package
+├── tests/                      # Baseline automated tests
+├── pyproject.toml              # Direct dependencies and package metadata
+├── requirements.lock          # Reproducible dependency lock
+├── 1_generate_embedding.py    # Backward-compatible ingestion launcher
+├── 2_start_chatbot.py         # Backward-compatible Streamlit launcher
 ├── .env                        # Environment variables (create this)
 ├── .env.example               # Example environment file
 ├── chroma_db/                  # Chroma DB storage (created automatically)
 └── datasets/                      # Your document data folder
     └── data.txt               # JSONL formatted documents
+```
+
+## ✅ Development checks
+
+Run the baseline test suite without requiring a live Ollama server:
+
+```bash
+python -m unittest discover -v
 ```
 
 ## 🔧 How It Works

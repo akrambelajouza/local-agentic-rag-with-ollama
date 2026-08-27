@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-agentic-rag-with-ollama"
+version = "0.1.0"
+description = "A local retrieval-augmented chatbot powered by Ollama and Chroma."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "langchain==0.3.25",
+    "langchain-chroma==0.2.4",
+    "langchain-core==0.3.60",
+    "langchain-ollama==0.3.3",
+    "langchain-text-splitters==0.3.8",
+    "python-dotenv==1.1.0",
+    "streamlit==1.45.1",
+]
+
+[project.scripts]
+local-rag-ingest = "local_rag.ingestion:main"
+
+[tool.setuptools.packages.find]
+include = ["local_rag*"]
