@@ -20,6 +20,7 @@ class ProjectMetadataTests(unittest.TestCase):
                 "langchain-core==0.3.60",
                 "langchain-ollama==0.3.3",
                 "langchain-text-splitters==0.3.8",
+                "pydantic==2.11.4",
                 "python-dotenv==1.1.0",
                 "streamlit==1.45.1",
             ],
