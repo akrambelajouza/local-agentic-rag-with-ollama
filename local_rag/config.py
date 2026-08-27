@@ -25,6 +25,10 @@ class Settings:
     database_location: Path
     collection_name: str
     ollama_base_url: str = "http://localhost:11434"
+    chunk_size: int = 1000
+    chunk_overlap: int = 200
+    batch_size: int = 64
+    rebuild_index: bool = True
 
     @classmethod
     def from_mapping(
@@ -51,6 +55,11 @@ class Settings:
         dataset_folder = Path(_required(values, "DATASET_STORAGE_FOLDER"))
         database_location = Path(_required(values, "DATABASE_LOCATION"))
 
+        chunk_size = _positive_int(values, "CHUNK_SIZE", 1000)
+        chunk_overlap = _non_negative_int(values, "CHUNK_OVERLAP", 200)
+        if chunk_overlap >= chunk_size:
+            raise ConfigurationError("CHUNK_OVERLAP must be smaller than CHUNK_SIZE")
+
         return cls(
             embedding_model=_required(values, "EMBEDDING_MODEL"),
             chat_model=_required(values, "CHAT_MODEL"),
@@ -60,6 +69,10 @@ class Settings:
             collection_name=_required(values, "COLLECTION_NAME"),
             ollama_base_url=_clean(values.get("OLLAMA_BASE_URL"))
             or "http://localhost:11434",
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            batch_size=_positive_int(values, "BATCH_SIZE", 64),
+            rebuild_index=_boolean(values, "REBUILD_INDEX", True),
         )
 
 
@@ -83,3 +96,36 @@ def _required(values: Mapping[str, str | None], name: str) -> str:
 
 def _resolve(root: Path, path: Path) -> Path:
     return path if path.is_absolute() else root / path
+
+
+def _positive_int(values: Mapping[str, str | None], name: str, default: int) -> int:
+    value = _integer(values, name, default)
+    if value <= 0:
+        raise ConfigurationError(f"{name} must be greater than zero")
+    return value
+
+
+def _non_negative_int(values: Mapping[str, str | None], name: str, default: int) -> int:
+    value = _integer(values, name, default)
+    if value < 0:
+        raise ConfigurationError(f"{name} cannot be negative")
+    return value
+
+
+def _integer(values: Mapping[str, str | None], name: str, default: int) -> int:
+    raw = _clean(values.get(name))
+    try:
+        return int(raw) if raw else default
+    except ValueError as error:
+        raise ConfigurationError(f"{name} must be an integer") from error
+
+
+def _boolean(values: Mapping[str, str | None], name: str, default: bool) -> bool:
+    raw = _clean(values.get(name)).lower()
+    if not raw:
+        return default
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    raise ConfigurationError(f"{name} must be true or false")

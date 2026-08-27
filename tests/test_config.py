@@ -17,6 +17,10 @@ class SettingsTests(unittest.TestCase):
                 "DATASET_STORAGE_FOLDER": "fixtures",
                 "DATABASE_LOCATION": "index",
                 "COLLECTION_NAME": "portfolio_rag",
+                "CHUNK_SIZE": "800",
+                "CHUNK_OVERLAP": "100",
+                "BATCH_SIZE": "32",
+                "REBUILD_INDEX": "false",
             },
             base_directory=Path("workspace"),
         )
@@ -27,6 +31,10 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(settings.dataset_path, Path("workspace/fixtures/data.txt"))
         self.assertEqual(settings.database_location, Path("workspace/index"))
         self.assertEqual(settings.collection_name, "portfolio_rag")
+        self.assertEqual(settings.chunk_size, 800)
+        self.assertEqual(settings.chunk_overlap, 100)
+        self.assertEqual(settings.batch_size, 32)
+        self.assertFalse(settings.rebuild_index)
 
     def test_reports_all_missing_required_settings(self) -> None:
         with self.assertRaisesRegex(
@@ -40,6 +48,21 @@ class SettingsTests(unittest.TestCase):
                     "DATASET_STORAGE_FOLDER": "fixtures",
                 }
             )
+
+    def test_rejects_invalid_chunk_configuration(self) -> None:
+        values = {
+            "EMBEDDING_MODEL": "embed",
+            "CHAT_MODEL": "chat",
+            "MODEL_PROVIDER": "ollama",
+            "DATASET_STORAGE_FOLDER": "fixtures",
+            "DATABASE_LOCATION": "index",
+            "COLLECTION_NAME": "rag",
+            "CHUNK_SIZE": "100",
+            "CHUNK_OVERLAP": "100",
+        }
+
+        with self.assertRaisesRegex(ConfigurationError, "smaller than CHUNK_SIZE"):
+            Settings.from_mapping(values)
 
     def test_loads_dotenv_values_with_environment_overrides(self) -> None:
         with TemporaryDirectory() as temporary_directory:

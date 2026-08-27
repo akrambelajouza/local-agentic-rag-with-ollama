@@ -1,10 +1,12 @@
 import unittest
+from dataclasses import replace
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
 
 from local_rag.agent import build_agent_executor
 from local_rag.config import Settings
-from local_rag.ingestion import CorpusDocument, generate_embeddings
+from local_rag.ingestion import CorpusDocument, _build_index
 
 
 class RuntimeConfigurationTests(unittest.TestCase):
@@ -58,7 +60,12 @@ class RuntimeConfigurationTests(unittest.TestCase):
         load_documents.return_value = [CorpusDocument("url", "title", "text")]
         splitter.return_value.create_documents.return_value = []
 
-        generate_embeddings(self.settings)
+        with TemporaryDirectory() as temporary_directory:
+            settings = replace(
+                self.settings,
+                database_location=Path(temporary_directory) / "index",
+            )
+            _build_index(settings, settings.database_location)
 
         embeddings.assert_called_once_with(
             model="embed-model", base_url="http://ollama.internal:11434"
