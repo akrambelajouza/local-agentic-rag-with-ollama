@@ -1,4 +1,4 @@
-"""Backward-compatible Streamlit launcher."""
+"""Canonical Streamlit launcher."""
 
 from local_rag.app import render_app
 
