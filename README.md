@@ -82,6 +82,12 @@ This script will:
 - Generate embeddings using Ollama
 - Store them in Chroma DB
 
+Ingestion validates the complete dataset and builds in an isolated directory before
+replacing the active index. Configure it in `.env` with `CHUNK_SIZE`,
+`CHUNK_OVERLAP`, `BATCH_SIZE`, and `REBUILD_INDEX`. Keep `REBUILD_INDEX=true` for
+safe full replacement; set it to `false` to refuse overwriting an existing index.
+Successful runs report document/chunk totals, failures, model, destination, and duration.
+
 ### Step 2: Start the Chatbot
 
 Once embeddings are generated, start the Streamlit chatbot interface:
