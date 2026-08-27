@@ -8,6 +8,7 @@ from streamlit.testing.v1 import AppTest
 from local_rag.app import get_assistant, render_app
 from local_rag.assistant import Citation, GroundedAnswer
 from local_rag.config import Settings
+from local_rag.workflow import WorkflowEvent
 
 
 class StreamlitStartupTests(unittest.TestCase):
@@ -98,6 +99,7 @@ class StreamlitStartupTests(unittest.TestCase):
                     "Python is a high-level programming language.",
                 ),
             ),
+            (WorkflowEvent("Retrying retrieval with a rewritten query."),),
         )
 
         render_app(assistant_provider=lambda _settings: assistant)
@@ -118,6 +120,8 @@ class StreamlitStartupTests(unittest.TestCase):
             [False, True],
         )
         streamlit.status.assert_called_once()
+        progress = streamlit.status.return_value.__enter__.return_value
+        progress.write.assert_any_call("Retrying retrieval with a rewritten query.")
         self.assertEqual(len(streamlit.session_state.messages), 2)
         self.assertEqual(
             streamlit.session_state.messages[-1].content,

@@ -104,6 +104,12 @@ evidence above the configured threshold receive a clear decline. Tune retrieval 
 `.env` with `RETRIEVAL_LIMIT` (maximum chunks) and `RELEVANCE_THRESHOLD` (a value
 from `0` to `1`).
 
+Before answering, a structured sufficiency check evaluates the retrieved evidence.
+Weak evidence triggers at most one rewritten search and one additional retrieval;
+after that hard limit, the assistant stops honestly instead of looping or guessing.
+The retry decision is shown as a short UI status and logged without exposing model
+reasoning.
+
 ## 📁 Project Structure
 
 ```
@@ -135,8 +141,9 @@ python -m unittest discover -v
 1. **Document Processing**: Documents are loaded from JSONL format and split into chunks using `RecursiveCharacterTextSplitter`
 2. **Embedding Generation**: Each chunk is converted to embeddings using Ollama's embedding model
 3. **Vector Storage**: Embeddings are stored in Chroma DB with metadata (source URL, title)
-4. **Retrieval**: When you ask a question, the system retrieves the most relevant document chunks
-5. **Generation**: An agentic LLM uses the retrieved context to generate accurate answers with source citations
+4. **Retrieval**: The system retrieves the most relevant document chunks
+5. **Agentic Check**: A typed sufficiency decision can rewrite and retry the search once
+6. **Generation**: The local model answers only from sufficient evidence, with verified source citations
 
 ## 📚 Further Reading
 

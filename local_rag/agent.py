@@ -7,6 +7,7 @@ from langchain.chat_models import init_chat_model
 from local_rag.assistant import GroundedAssistant
 from local_rag.config import Settings
 from local_rag.retrieval import ChromaEvidenceRetriever
+from local_rag.workflow import AgenticRetrievalWorkflow, ModelEvidenceJudge
 
 
 def build_assistant(settings: Settings) -> GroundedAssistant:
@@ -16,7 +17,9 @@ def build_assistant(settings: Settings) -> GroundedAssistant:
         temperature=0,
         base_url=settings.ollama_base_url,
     )
-    return GroundedAssistant(model, ChromaEvidenceRetriever(settings))
+    retriever = ChromaEvidenceRetriever(settings)
+    workflow = AgenticRetrievalWorkflow(retriever, ModelEvidenceJudge(model))
+    return GroundedAssistant(model, workflow)
 
 
 def build_agent_executor(settings: Settings) -> GroundedAssistant:
