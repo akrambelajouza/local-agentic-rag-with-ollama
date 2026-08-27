@@ -20,6 +20,7 @@ dependencies = [
 
 [project.scripts]
 local-rag-ingest = "local_rag.ingestion:main"
+local-rag-check = "local_rag.readiness:main"
 
 [tool.setuptools.packages.find]
 include = ["local_rag*"]

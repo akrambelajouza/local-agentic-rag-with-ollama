@@ -27,6 +27,7 @@ class ProjectMetadataTests(unittest.TestCase):
         self.assertTrue((repository_root / "requirements.lock").is_file())
         self.assertIn("pip install -r requirements.lock", readme)
         self.assertIn("python -m local_rag.ingestion", readme)
+        self.assertIn("python -m local_rag.readiness", readme)
         self.assertIn("streamlit run app.py", readme)
         self.assertIn("python -m unittest discover -v", readme)
 

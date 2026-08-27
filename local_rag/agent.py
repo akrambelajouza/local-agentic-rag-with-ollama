@@ -46,7 +46,10 @@ Source: source_url
 def build_agent_executor(settings: Settings) -> AgentExecutor:
     """Create the current Ollama, Chroma, retrieval-tool agent at runtime."""
 
-    embeddings = OllamaEmbeddings(model=settings.embedding_model)
+    embeddings = OllamaEmbeddings(
+        model=settings.embedding_model,
+        base_url=settings.ollama_base_url,
+    )
     vector_store = Chroma(
         collection_name=settings.collection_name,
         embedding_function=embeddings,
@@ -56,6 +59,7 @@ def build_agent_executor(settings: Settings) -> AgentExecutor:
         settings.chat_model,
         model_provider=settings.model_provider,
         temperature=0,
+        base_url=settings.ollama_base_url,
     )
     retrieve = _create_retrieval_tool(vector_store)
     tools = [retrieve]
