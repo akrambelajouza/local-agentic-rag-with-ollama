@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 from local_rag.agent import build_agent_executor
 from local_rag.config import Settings
 from local_rag.ingestion import CorpusDocument, _build_index
+from local_rag.workflow import SufficiencyDecision
 
 
 class RuntimeConfigurationTests(unittest.TestCase):
@@ -40,6 +41,9 @@ class RuntimeConfigurationTests(unittest.TestCase):
             model_provider="ollama",
             temperature=0,
             base_url="http://ollama.internal:11434",
+        )
+        chat_model.return_value.with_structured_output.assert_called_once_with(
+            SufficiencyDecision
         )
 
     @patch("local_rag.ingestion.RecursiveCharacterTextSplitter")

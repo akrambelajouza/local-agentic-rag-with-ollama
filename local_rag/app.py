@@ -103,6 +103,8 @@ def render_app(*, assistant_provider: AssistantProvider | None = None) -> None:
         ) as progress:
             progress.write("Retrieving relevant evidence and asking the local model.")
             answer = assistant.answer(user_question, st.session_state.messages)
+            for event in answer.events:
+                progress.write(event.message)
             progress.update(label="Answer ready", state="complete", expanded=False)
     except (ConnectionError, OSError, TimeoutError):
         _show_failure(
