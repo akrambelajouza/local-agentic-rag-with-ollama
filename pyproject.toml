@@ -22,6 +22,7 @@ dependencies = [
 [project.scripts]
 local-rag-ingest = "local_rag.ingestion:main"
 local-rag-check = "local_rag.readiness:main"
+local-rag-evaluate = "local_rag.evaluation_cli:cli"
 
 [tool.setuptools.packages.find]
 include = ["local_rag*"]

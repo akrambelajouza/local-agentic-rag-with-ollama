@@ -29,10 +29,17 @@ class WorkflowEvent:
 
 
 @dataclass(frozen=True, slots=True)
+class RetrievalAttempt:
+    query: str
+    source_urls: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class RetrievalResult:
     sufficient: bool
     evidence: tuple[Evidence, ...]
     events: tuple[WorkflowEvent, ...]
+    attempts: tuple[RetrievalAttempt, ...] = ()
 
 
 class EvidenceJudge(Protocol):
@@ -58,7 +65,10 @@ class DirectRetrievalWorkflow:
 
     def run(self, question: str) -> RetrievalResult:
         evidence = self._retriever.retrieve(RetrievalInput(query=question))
-        return RetrievalResult(bool(evidence), evidence, ())
+        attempt = RetrievalAttempt(
+            question, tuple(item.source_url for item in evidence)
+        )
+        return RetrievalResult(bool(evidence), evidence, (), (attempt,))
 
 
 class ModelEvidenceJudge:
@@ -110,10 +120,14 @@ class AgenticRetrievalWorkflow:
     def run(self, question: str) -> RetrievalResult:
         query = question
         events: list[WorkflowEvent] = []
+        attempts: list[RetrievalAttempt] = []
         evidence: tuple[Evidence, ...] = ()
 
         for attempt in range(MAX_RETRIEVAL_ATTEMPTS):
             evidence = self._retriever.retrieve(RetrievalInput(query=query))
+            attempts.append(
+                RetrievalAttempt(query, tuple(item.source_url for item in evidence))
+            )
             can_retry = attempt + 1 < MAX_RETRIEVAL_ATTEMPTS
             try:
                 decision = self._judge.evaluate(
@@ -123,6 +137,7 @@ class AgenticRetrievalWorkflow:
                 return self._stop(
                     evidence,
                     events,
+                    attempts,
                     "Stopped safely after an invalid sufficiency decision.",
                 )
 
@@ -130,12 +145,13 @@ class AgenticRetrievalWorkflow:
                 event = WorkflowEvent("Evidence is sufficient; generating the answer.")
                 events.append(event)
                 LOGGER.info(event.message)
-                return RetrievalResult(True, evidence, tuple(events))
+                return RetrievalResult(True, evidence, tuple(events), tuple(attempts))
 
             if not can_retry:
                 return self._stop(
                     evidence,
                     events,
+                    attempts,
                     "Stopped after reaching the retrieval retry limit.",
                 )
 
@@ -144,6 +160,7 @@ class AgenticRetrievalWorkflow:
                 return self._stop(
                     evidence,
                     events,
+                    attempts,
                     "Stopped because the model could not produce a safe rewrite.",
                 )
 
@@ -152,15 +169,18 @@ class AgenticRetrievalWorkflow:
             LOGGER.info(event.message)
             query = rewritten_query
 
-        return self._stop(evidence, events, "Stopped at the hard retrieval limit.")
+        return self._stop(
+            evidence, events, attempts, "Stopped at the hard retrieval limit."
+        )
 
     @staticmethod
     def _stop(
         evidence: tuple[Evidence, ...],
         events: list[WorkflowEvent],
+        attempts: list[RetrievalAttempt],
         message: str,
     ) -> RetrievalResult:
         event = WorkflowEvent(message)
         events.append(event)
         LOGGER.info(event.message)
-        return RetrievalResult(False, evidence, tuple(events))
+        return RetrievalResult(False, evidence, tuple(events), tuple(attempts))

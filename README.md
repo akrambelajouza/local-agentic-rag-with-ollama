@@ -110,6 +110,28 @@ after that hard limit, the assistant stops honestly instead of looping or guessi
 The retry decision is shown as a short UI status and logged without exposing model
 reasoning.
 
+## 📊 Evaluate RAG quality
+
+The curated set in `evaluation/questions.jsonl` includes answerable questions with
+expected sources and intentionally unanswerable questions. After Ollama is running
+and the sample corpus is indexed, run:
+
+```bash
+python -m local_rag.evaluation_cli --output evaluation/results/latest.json
+```
+
+The command writes a machine-readable JSON report and a concise Markdown summary.
+It reports retrieval hit rate, answer correctness, high-confidence unsupported
+claims, and citation accuracy, together with model names, chunk settings, dataset
+and evaluation-set hashes, timestamp, and duration. The unsupported-claim metric is
+produced by a structured claim-level judgment against the displayed source excerpts;
+uncited non-declined answers are always counted as unsupported.
+
+Default quality thresholds return exit code `1` when missed (runtime or input errors
+use exit code `2`). Override thresholds with `--min-retrieval-hit-rate`,
+`--min-answer-correctness`, `--max-unsupported-claim-rate`, and
+`--min-citation-accuracy`.
+
 ## 📁 Project Structure
 
 ```
