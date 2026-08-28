@@ -103,7 +103,9 @@ def load_documents(dataset_path: str | Path) -> list[CorpusDocument]:
     if not documents and not errors:
         errors.append("dataset contains no documents")
     if errors:
-        raise CorpusValidationError("Dataset validation failed:\n- " + "\n- ".join(errors))
+        raise CorpusValidationError(
+            "Dataset validation failed:\n- " + "\n- ".join(errors)
+        )
     return documents
 
 
@@ -143,10 +145,16 @@ def generate_embeddings(
                 ) from error
         if isinstance(error, (CorpusValidationError, IngestionError)):
             raise
-        raise IngestionError(f"Index build failed; previous index preserved: {error}") from error
+        raise IngestionError(
+            f"Index build failed; previous index preserved: {error}"
+        ) from error
     return IngestionSummary(
-        document_count, chunk_count, 0, settings.embedding_model,
-        destination, clock() - started_at,
+        document_count,
+        chunk_count,
+        0,
+        settings.embedding_model,
+        destination,
+        clock() - started_at,
     )
 
 
@@ -202,11 +210,13 @@ def _build_index_with_embeddings(
     for document in documents:
         document_chunks = splitter.create_documents(
             [document.raw_text],
-            metadatas=[{
-                "source": document.url,
-                "title": document.title,
-                "document_id": document.document_id,
-            }],
+            metadatas=[
+                {
+                    "source": document.url,
+                    "title": document.title,
+                    "document_id": document.document_id,
+                }
+            ],
         )
         chunks.extend(document_chunks)
         identifiers.extend(

@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock
 
-from local_rag.assistant import Citation, GroundedAnswer, UNSUPPORTED_ANSWER
+from local_rag.assistant import UNSUPPORTED_ANSWER, Citation, GroundedAnswer
 from local_rag.evaluation import (
     EvaluationCase,
     EvaluationMetadata,
@@ -13,20 +13,20 @@ from local_rag.evaluation import (
     calculate_metrics,
     threshold_failures,
 )
-from local_rag.evaluation_io import load_evaluation_cases, write_reports
 from local_rag.evaluation_cli import (
     ClaimSupportGrade,
     ModelClaimSupportJudge,
     run_local_evaluation,
 )
+from local_rag.evaluation_io import load_evaluation_cases, write_reports
 from local_rag.workflow import RetrievalAttempt
 
 
 class EvaluationMetricTests(unittest.TestCase):
     def test_claim_judge_detects_mixed_supported_and_unsupported_answer(self) -> None:
         model = MagicMock()
-        model.with_structured_output.return_value.invoke.return_value = ClaimSupportGrade(
-            unsupported_claims=["The Moon is made of cheese."]
+        model.with_structured_output.return_value.invoke.return_value = (
+            ClaimSupportGrade(unsupported_claims=["The Moon is made of cheese."])
         )
         judge = ModelClaimSupportJudge(model)
 
@@ -46,9 +46,7 @@ class EvaluationMetricTests(unittest.TestCase):
         claim_judge = MagicMock()
         claim_judge.find_unsupported_claims.return_value = ("Unsupported detail",)
 
-        observations = run_local_evaluation(
-            assistant, (self.cases[0],), claim_judge
-        )
+        observations = run_local_evaluation(assistant, (self.cases[0],), claim_judge)
 
         self.assertEqual(observations[0].retrieval_attempts, (attempt,))
         self.assertEqual(observations[0].unsupported_claims, ("Unsupported detail",))
@@ -60,9 +58,7 @@ class EvaluationMetricTests(unittest.TestCase):
 
         self.assertTrue(any(case.answerable for case in cases))
         self.assertTrue(any(not case.answerable for case in cases))
-        self.assertTrue(
-            all(case.expected_sources for case in cases if case.answerable)
-        )
+        self.assertTrue(all(case.expected_sources for case in cases if case.answerable))
 
     def setUp(self) -> None:
         self.cases = (
@@ -78,12 +74,14 @@ class EvaluationMetricTests(unittest.TestCase):
     def test_calculates_retrieval_answer_and_citation_metrics(self) -> None:
         observations = (
             EvaluationObservation(
-                "answerable-one", "Alpha is supported.",
+                "answerable-one",
+                "Alpha is supported.",
                 (Citation("One", "source-one", "Alpha is supported."),),
                 (RetrievalAttempt("Question one", ("source-one",)),),
             ),
             EvaluationObservation(
-                "answerable-two", "An incorrect response.",
+                "answerable-two",
+                "An incorrect response.",
                 (Citation("Wrong", "wrong-source", "Other evidence."),),
                 (RetrievalAttempt("Question two", ("wrong-source",)),),
             ),
@@ -127,9 +125,7 @@ class EvaluationMetricTests(unittest.TestCase):
         metrics, scores = calculate_metrics((case,), (observation,))
 
         self.assertEqual(metrics.unsupported_claims, 1)
-        self.assertEqual(
-            scores[0].unsupported_claims, ("The Moon is made of cheese.",)
-        )
+        self.assertEqual(scores[0].unsupported_claims, ("The Moon is made of cheese.",))
 
     def test_counts_high_confidence_unsupported_answers(self) -> None:
         observations = (

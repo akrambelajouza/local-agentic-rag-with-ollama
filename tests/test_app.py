@@ -12,6 +12,13 @@ from local_rag.workflow import WorkflowEvent
 
 
 class StreamlitStartupTests(unittest.TestCase):
+    def setUp(self) -> None:
+        settings_patcher = patch(
+            "local_rag.app.load_settings", return_value=MagicMock(spec=Settings)
+        )
+        settings_patcher.start()
+        self.addCleanup(settings_patcher.stop)
+
     def test_initial_page_renders_without_sending_a_model_request(self) -> None:
         app_path = Path(__file__).resolve().parents[1] / "app.py"
 
@@ -21,7 +28,9 @@ class StreamlitStartupTests(unittest.TestCase):
         self.assertEqual([title.value for title in app.title], ["📚 Local RAG Chatbot"])
         self.assertEqual(len(app.chat_input), 1)
         self.assertTrue(app.chat_input[0].disabled)
-        self.assertTrue(any("readiness" in item.value.lower() for item in app.subheader))
+        self.assertTrue(
+            any("readiness" in item.value.lower() for item in app.subheader)
+        )
         rendered_text = "\n".join(item.value for item in app.markdown)
         self.assertIn("local document collection", rendered_text)
         self.assertIn("What is Python?", rendered_text)
@@ -54,9 +63,7 @@ class StreamlitStartupTests(unittest.TestCase):
 
         render_app()
 
-        streamlit.markdown.assert_any_call(
-            "[https://source.test](https://source.test)"
-        )
+        streamlit.markdown.assert_any_call("[https://source.test](https://source.test)")
         streamlit.expander.assert_called_once_with("Stored source")
         streamlit.caption.assert_any_call(
             "Supporting excerpt from the indexed document."
@@ -106,9 +113,7 @@ class StreamlitStartupTests(unittest.TestCase):
 
         assistant.answer.assert_not_called()
         streamlit.rerun.assert_called_once_with()
-        self.assertEqual(
-            streamlit.session_state.pending_question, "What is Python?"
-        )
+        self.assertEqual(streamlit.session_state.pending_question, "What is Python?")
 
         streamlit.rerun.reset_mock()
         streamlit.chat_input.return_value = None
@@ -178,8 +183,9 @@ class StreamlitStartupTests(unittest.TestCase):
                 streamlit.chat_input.return_value = None
                 assistant = MagicMock()
                 assistant.answer.side_effect = error
+                assistant_provider = MagicMock(return_value=assistant)
 
-                render_app(assistant_provider=lambda _settings: assistant)
+                render_app(assistant_provider=assistant_provider)
 
                 self.assertTrue(streamlit.error.called)
                 self.assertEqual(len(streamlit.session_state.messages), 2)
@@ -201,7 +207,9 @@ class StreamlitStartupTests(unittest.TestCase):
         render_app(assistant_provider=lambda _settings: assistant)
 
         assistant.answer.assert_called_once()
-        self.assertEqual(streamlit.session_state.messages[0].content, "Original question")
+        self.assertEqual(
+            streamlit.session_state.messages[0].content, "Original question"
+        )
         self.assertEqual(len(streamlit.session_state.messages), 2)
         self.assertIsNone(streamlit.session_state.pending_question)
 

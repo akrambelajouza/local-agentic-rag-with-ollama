@@ -14,7 +14,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from local_rag.agent import build_assistant
-from local_rag.assistant import Citation, GroundedAssistant, UNSUPPORTED_ANSWER
+from local_rag.assistant import UNSUPPORTED_ANSWER, Citation, GroundedAssistant
 from local_rag.config import load_settings
 from local_rag.evaluation import (
     METRIC_DEFINITIONS,
@@ -67,7 +67,9 @@ class ModelClaimSupportJudge:
         if not isinstance(grade, ClaimSupportGrade):
             raise ValueError("Model returned an invalid claim-support grade")
         return tuple(
-            dict.fromkeys(claim.strip() for claim in grade.unsupported_claims if claim.strip())
+            dict.fromkeys(
+                claim.strip() for claim in grade.unsupported_claims if claim.strip()
+            )
         )
 
 

@@ -1,5 +1,5 @@
-import io
 import hashlib
+import io
 import sqlite3
 import unittest
 from pathlib import Path

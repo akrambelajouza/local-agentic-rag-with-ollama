@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 from langchain_core.messages import AIMessage, HumanMessage
 
-from local_rag.assistant import GroundedAssistant, UNSUPPORTED_ANSWER
+from local_rag.assistant import UNSUPPORTED_ANSWER, GroundedAssistant
 from local_rag.retrieval import Evidence
 from local_rag.workflow import DirectRetrievalWorkflow, RetrievalResult, WorkflowEvent
 
@@ -49,14 +49,15 @@ class GroundedAnswerTests(unittest.TestCase):
             Evidence("Known fact", "https://source.test", "Source title", 0.9),
         )
 
-        answer = GroundedAssistant(
-            model, DirectRetrievalWorkflow(retriever)
-        ).answer("Question?", [])
+        answer = GroundedAssistant(model, DirectRetrievalWorkflow(retriever)).answer(
+            "Question?", []
+        )
 
         self.assertNotIn("https://invented.test", answer.text)
-        self.assertEqual([(item.title, item.url) for item in answer.citations], [
-            ("Source title", "https://source.test")
-        ])
+        self.assertEqual(
+            [(item.title, item.url) for item in answer.citations],
+            [("Source title", "https://source.test")],
+        )
 
     def test_model_authored_sources_section_is_not_displayed(self) -> None:
         model = MagicMock()
@@ -68,9 +69,9 @@ class GroundedAnswerTests(unittest.TestCase):
             Evidence("Known fact", "https://source.test", "Source title", 0.9),
         )
 
-        answer = GroundedAssistant(
-            model, DirectRetrievalWorkflow(retriever)
-        ).answer("Question?", [])
+        answer = GroundedAssistant(model, DirectRetrievalWorkflow(retriever)).answer(
+            "Question?", []
+        )
 
         self.assertEqual(answer.text, "Supported answer.")
 
@@ -79,9 +80,9 @@ class GroundedAnswerTests(unittest.TestCase):
         retriever = MagicMock()
         retriever.retrieve.return_value = ()
 
-        answer = GroundedAssistant(
-            model, DirectRetrievalWorkflow(retriever)
-        ).answer("Unknown?", [])
+        answer = GroundedAssistant(model, DirectRetrievalWorkflow(retriever)).answer(
+            "Unknown?", []
+        )
 
         self.assertEqual(answer.text, UNSUPPORTED_ANSWER)
         self.assertEqual(answer.citations, ())

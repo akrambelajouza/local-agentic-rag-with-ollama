@@ -152,10 +152,41 @@ local-agentic-rag-with-ollama/
 
 ## ✅ Development checks
 
-Run the baseline test suite without requiring a live Ollama server:
+Install the pinned development tools once:
 
 ```bash
-python -m unittest discover -v
+python -m pip install -r requirements-dev.lock
+```
+
+Run the complete deterministic gate used by pull requests:
+
+```bash
+python scripts/quality.py
+```
+
+The individual commands are:
+
+```bash
+python -m ruff format --check .       # formatting
+python -m ruff check .                # linting
+python -m unittest discover -v        # unit tests; live Ollama test is skipped
+python -m unittest tests.test_app -v  # Streamlit smoke and interaction tests
+python -m coverage run -m unittest discover -v
+python -m coverage report             # fails below 85% core-package coverage
+python -m pip check                    # dependency consistency
+```
+
+GitHub Actions runs the same `python scripts/quality.py` command on Windows and
+Ubuntu with Python 3.11 and 3.12, without downloading Ollama models. To opt into
+the live local-stack smoke test:
+
+```powershell
+$env:RUN_LIVE_OLLAMA="1"
+python -m unittest tests.test_live_ollama -v
+```
+
+```bash
+RUN_LIVE_OLLAMA=1 python -m unittest tests.test_live_ollama -v
 ```
 
 ## 🔧 How It Works

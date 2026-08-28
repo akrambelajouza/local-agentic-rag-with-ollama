@@ -90,16 +90,12 @@ class AgenticRetrievalWorkflowTests(unittest.TestCase):
             [attempt.query for attempt in result.attempts],
             ["Question", "more specific query"],
         )
-        self.assertEqual(
-            result.attempts[0].source_urls, ("https://source.test/weak",)
-        )
+        self.assertEqual(result.attempts[0].source_urls, ("https://source.test/weak",))
         self.assertIn("Retrying retrieval", result.events[0].message)
 
     def test_failed_rewrite_stops_honestly_without_second_retrieval(self) -> None:
         retriever = StubRetriever([evidence("weak")])
-        judge = StubJudge(
-            [SufficiencyDecision(sufficient=False, rewritten_query="  ")]
-        )
+        judge = StubJudge([SufficiencyDecision(sufficient=False, rewritten_query="  ")])
 
         result = AgenticRetrievalWorkflow(retriever, judge).run("Question")
 

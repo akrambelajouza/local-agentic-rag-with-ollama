@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 import logging
+from collections.abc import Callable
 
 import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
@@ -12,7 +12,6 @@ from local_rag.agent import build_assistant
 from local_rag.assistant import Citation, GroundedAssistant
 from local_rag.config import Settings, load_settings
 from local_rag.readiness import assess_readiness
-
 
 LOGGER = logging.getLogger(__name__)
 

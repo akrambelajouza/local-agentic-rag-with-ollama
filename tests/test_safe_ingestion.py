@@ -11,13 +11,13 @@ from local_rag.ingestion import (
     CorpusDocument,
     CorpusValidationError,
     IngestionError,
-    deterministic_chunk_id,
-    generate_embeddings,
-    load_documents,
     _build_index,
     _build_index_with_embeddings,
     _promote_index,
     _run_builder_in_subprocess,
+    deterministic_chunk_id,
+    generate_embeddings,
+    load_documents,
 )
 
 
@@ -43,9 +43,12 @@ def fail_with_large_error(_settings: Settings, _destination: Path) -> tuple[int,
 class SafeIngestionTests(unittest.TestCase):
     def _settings(self, root: Path) -> Settings:
         return Settings(
-            embedding_model="embed-model", chat_model="chat-model",
-            model_provider="ollama", dataset_path=root / "data.txt",
-            database_location=root / "index", collection_name="rag_data",
+            embedding_model="embed-model",
+            chat_model="chat-model",
+            model_provider="ollama",
+            dataset_path=root / "data.txt",
+            database_location=root / "index",
+            collection_name="rag_data",
         )
 
     def test_validates_complete_dataset_before_building(self) -> None:
@@ -85,7 +88,9 @@ class SafeIngestionTests(unittest.TestCase):
                 settings, build_index=build, clock=iter((10.0, 12.5)).__next__
             )
             self.assertFalse((settings.database_location / "old.txt").exists())
-            self.assertEqual((settings.database_location / "new.txt").read_text(), "new")
+            self.assertEqual(
+                (settings.database_location / "new.txt").read_text(), "new"
+            )
             self.assertEqual((summary.document_count, summary.chunk_count), (2, 5))
             self.assertEqual(summary.duration_seconds, 2.5)
 
@@ -167,7 +172,9 @@ class SafeIngestionTests(unittest.TestCase):
                 encoding="utf-8",
             )
             splitter.return_value.create_documents.return_value = [
-                Document(page_content="chunk", metadata={"source": "https://example.test"})
+                Document(
+                    page_content="chunk", metadata={"source": "https://example.test"}
+                )
             ]
 
             _build_index(settings, root / "first")

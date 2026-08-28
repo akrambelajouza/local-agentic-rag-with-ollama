@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from typing import Protocol
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel
 
 from local_rag.retrieval import Evidence, EvidenceRetriever, RetrievalInput
-
 
 LOGGER = logging.getLogger(__name__)
 MAX_RETRIEVAL_ATTEMPTS = 2
@@ -85,9 +84,12 @@ class ModelEvidenceJudge:
         *,
         can_retry: bool,
     ) -> SufficiencyDecision:
-        context = "\n\n".join(
-            f"Title: {item.title}\nContent: {item.content}" for item in evidence
-        ) or "No evidence was retrieved."
+        context = (
+            "\n\n".join(
+                f"Title: {item.title}\nContent: {item.content}" for item in evidence
+            )
+            or "No evidence was retrieved."
+        )
         retry_instruction = (
             "If insufficient, provide one concise rewritten search query."
             if can_retry

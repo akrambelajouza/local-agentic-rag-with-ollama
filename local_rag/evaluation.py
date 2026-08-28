@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Sequence
 
-from local_rag.assistant import Citation, UNSUPPORTED_ANSWER
+from local_rag.assistant import UNSUPPORTED_ANSWER, Citation
 from local_rag.workflow import RetrievalAttempt
 
 
@@ -209,7 +209,9 @@ def threshold_failures(
     for definition in METRIC_DEFINITIONS:
         value = float(getattr(metrics, definition.metric_field))
         threshold = float(getattr(thresholds, definition.threshold_field))
-        passed = value >= threshold if definition.direction == "min" else value <= threshold
+        passed = (
+            value >= threshold if definition.direction == "min" else value <= threshold
+        )
         if not passed:
             comparison = "below" if definition.direction == "min" else "exceeds"
             failures.append(
@@ -218,9 +220,7 @@ def threshold_failures(
     return tuple(failures)
 
 
-def metric_display(
-    definition: MetricDefinition, metrics: EvaluationMetrics
-) -> str:
+def metric_display(definition: MetricDefinition, metrics: EvaluationMetrics) -> str:
     value = float(getattr(metrics, definition.metric_field))
     if definition.count_field:
         count = int(getattr(metrics, definition.count_field))
