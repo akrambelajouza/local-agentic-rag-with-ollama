@@ -47,11 +47,11 @@ class Settings:
             "EMBEDDING_MODEL",
             "MODEL_PROVIDER",
         )
-        missing = sorted(name for name in required_names if not _clean(values.get(name)))
+        missing = sorted(
+            name for name in required_names if not _clean(values.get(name))
+        )
         if missing:
-            raise ConfigurationError(
-                f"Missing required settings: {', '.join(missing)}"
-            )
+            raise ConfigurationError(f"Missing required settings: {', '.join(missing)}")
 
         root = base_directory or Path.cwd()
         dataset_folder = Path(_required(values, "DATASET_STORAGE_FOLDER"))
@@ -76,9 +76,7 @@ class Settings:
             batch_size=_positive_int(values, "BATCH_SIZE", 64),
             rebuild_index=_boolean(values, "REBUILD_INDEX", True),
             retrieval_limit=_positive_int(values, "RETRIEVAL_LIMIT", 4),
-            relevance_threshold=_bounded_float(
-                values, "RELEVANCE_THRESHOLD", 0.25
-            ),
+            relevance_threshold=_bounded_float(values, "RELEVANCE_THRESHOLD", 0.25),
         )
 
 

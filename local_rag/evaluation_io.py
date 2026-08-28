@@ -23,7 +23,9 @@ from local_rag.evaluation import (
 def load_evaluation_cases(path: Path) -> tuple[EvaluationCase, ...]:
     cases: list[EvaluationCase] = []
     seen_ids: set[str] = set()
-    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    for line_number, line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), 1
+    ):
         if not line.strip():
             continue
         try:
@@ -35,7 +37,9 @@ def load_evaluation_cases(path: Path) -> tuple[EvaluationCase, ...]:
                 case_id=str(item["id"]).strip(),
                 question=str(item["question"]).strip(),
                 answerable=answerable,
-                expected_sources=tuple(str(value) for value in item["expected_sources"]),
+                expected_sources=tuple(
+                    str(value) for value in item["expected_sources"]
+                ),
                 expected_answer_terms=tuple(
                     str(value) for value in item["expected_answer_terms"]
                 ),
@@ -45,11 +49,15 @@ def load_evaluation_cases(path: Path) -> tuple[EvaluationCase, ...]:
                 f"Invalid evaluation case on line {line_number}: {error}"
             ) from error
         if not case.case_id or not case.question or case.case_id in seen_ids:
-            raise ValueError(f"Invalid or duplicate evaluation case on line {line_number}")
+            raise ValueError(
+                f"Invalid or duplicate evaluation case on line {line_number}"
+            )
         if case.answerable and (
             not case.expected_sources or not case.expected_answer_terms
         ):
-            raise ValueError(f"Answerable case on line {line_number} lacks expectations")
+            raise ValueError(
+                f"Answerable case on line {line_number} lacks expectations"
+            )
         seen_ids.add(case.case_id)
         cases.append(case)
     if not cases:

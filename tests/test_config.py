@@ -100,7 +100,9 @@ class SettingsTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with patch.dict(environ, {"CHAT_MODEL": "chat-from-environment"}, clear=True):
+            with patch.dict(
+                environ, {"CHAT_MODEL": "chat-from-environment"}, clear=True
+            ):
                 settings = load_settings(env_file)
 
             self.assertEqual(settings.chat_model, "chat-from-environment")

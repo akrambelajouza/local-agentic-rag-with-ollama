@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-import re
 from typing import Any, Sequence
 
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
@@ -12,8 +12,9 @@ from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from local_rag.retrieval import Evidence
 from local_rag.workflow import RetrievalAttempt, RetrievalWorkflow, WorkflowEvent
 
-
-UNSUPPORTED_ANSWER = "The indexed collection does not contain enough evidence to answer that question."
+UNSUPPORTED_ANSWER = (
+    "The indexed collection does not contain enough evidence to answer that question."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,22 +54,20 @@ class GroundedAssistant:
         self._model = model
         self._workflow = workflow
 
-    def answer(
-        self, question: str, history: Sequence[BaseMessage]
-    ) -> GroundedAnswer:
+    def answer(self, question: str, history: Sequence[BaseMessage]) -> GroundedAnswer:
         result = self._workflow.run(question)
         evidence = result.evidence
         events: tuple[WorkflowEvent, ...] = result.events
         if not result.sufficient:
-            return GroundedAnswer(
-                UNSUPPORTED_ANSWER, (), events, result.attempts
-            )
+            return GroundedAnswer(UNSUPPORTED_ANSWER, (), events, result.attempts)
         if not evidence:
-            return GroundedAnswer(
-                UNSUPPORTED_ANSWER, (), events, result.attempts
-            )
+            return GroundedAnswer(UNSUPPORTED_ANSWER, (), events, result.attempts)
         response = self._model.invoke(
-            [SystemMessage(content=_grounding_prompt(evidence)), *history, HumanMessage(question)]
+            [
+                SystemMessage(content=_grounding_prompt(evidence)),
+                *history,
+                HumanMessage(question),
+            ]
         )
         citations_by_source: dict[tuple[str, str], Citation] = {}
         for item in evidence:

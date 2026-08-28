@@ -67,6 +67,8 @@ def create_retrieval_tool(retriever: EvidenceRetriever) -> BaseTool:
     def retrieve(query: str) -> list[dict[str, object]]:
         """Return structured evidence and source metadata for a question."""
 
-        return [asdict(item) for item in retriever.retrieve(RetrievalInput(query=query))]
+        return [
+            asdict(item) for item in retriever.retrieve(RetrievalInput(query=query))
+        ]
 
     return retrieve

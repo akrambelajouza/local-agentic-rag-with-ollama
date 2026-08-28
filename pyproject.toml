@@ -26,3 +26,20 @@ local-rag-evaluate = "local_rag.evaluation_cli:cli"
 
 [tool.setuptools.packages.find]
 include = ["local_rag*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.coverage.run]
+branch = true
+source = ["local_rag"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true

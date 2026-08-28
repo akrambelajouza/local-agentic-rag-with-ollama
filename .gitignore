@@ -4,3 +4,6 @@ __pycache__/
 /chroma_db
 snapshot.txt
 /evaluation/results/
+.coverage
+htmlcov/
+coverage.xml
