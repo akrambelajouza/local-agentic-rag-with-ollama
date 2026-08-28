@@ -29,8 +29,13 @@ class ProjectMetadataTests(unittest.TestCase):
         self.assertIn("pip install -r requirements.lock", readme)
         self.assertIn("python -m local_rag.ingestion", readme)
         self.assertIn("python -m local_rag.readiness", readme)
+        self.assertIn("python -m local_rag.evaluation_cli", readme)
         self.assertIn("streamlit run app.py", readme)
         self.assertIn("python -m unittest discover -v", readme)
+        self.assertEqual(
+            metadata["project"]["scripts"]["local-rag-evaluate"],
+            "local_rag.evaluation_cli:cli",
+        )
 
 
 if __name__ == "__main__":

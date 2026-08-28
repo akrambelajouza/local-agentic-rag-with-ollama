@@ -1,0 +1,6 @@
+{"id":"python-creator","question":"Who created Python?","answerable":true,"expected_sources":["https://www.python.org/about/help/"],"expected_answer_terms":["Guido van Rossum"]}
+{"id":"python-name","question":"Why is the language called Python?","answerable":true,"expected_sources":["https://www.python.org/about/"],"expected_answer_terms":["Monty Python"]}
+{"id":"python-uses","question":"Name three common uses for Python.","answerable":true,"expected_sources":["https://www.python.org/about/apps/"],"expected_answer_terms":["web development","data science","automation"]}
+{"id":"python-list-comprehensions","question":"What is a Python list comprehension?","answerable":true,"expected_sources":["https://www.python.org/about/"],"expected_answer_terms":["concise","list"]}
+{"id":"unanswerable-france","question":"What is the capital of France?","answerable":false,"expected_sources":[],"expected_answer_terms":[]}
+{"id":"unanswerable-rust","question":"When was the Rust programming language first released?","answerable":false,"expected_sources":[],"expected_answer_terms":[]}

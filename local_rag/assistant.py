@@ -10,7 +10,7 @@ from typing import Any, Sequence
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 
 from local_rag.retrieval import Evidence
-from local_rag.workflow import RetrievalWorkflow, WorkflowEvent
+from local_rag.workflow import RetrievalAttempt, RetrievalWorkflow, WorkflowEvent
 
 
 UNSUPPORTED_ANSWER = "The indexed collection does not contain enough evidence to answer that question."
@@ -41,6 +41,7 @@ class GroundedAnswer:
     text: str
     citations: tuple[Citation, ...]
     events: tuple[WorkflowEvent, ...] = ()
+    retrieval_attempts: tuple[RetrievalAttempt, ...] = ()
 
 
 class GroundedAssistant:
@@ -59,9 +60,13 @@ class GroundedAssistant:
         evidence = result.evidence
         events: tuple[WorkflowEvent, ...] = result.events
         if not result.sufficient:
-            return GroundedAnswer(UNSUPPORTED_ANSWER, (), events)
+            return GroundedAnswer(
+                UNSUPPORTED_ANSWER, (), events, result.attempts
+            )
         if not evidence:
-            return GroundedAnswer(UNSUPPORTED_ANSWER, (), events)
+            return GroundedAnswer(
+                UNSUPPORTED_ANSWER, (), events, result.attempts
+            )
         response = self._model.invoke(
             [SystemMessage(content=_grounding_prompt(evidence)), *history, HumanMessage(question)]
         )
@@ -72,7 +77,9 @@ class GroundedAssistant:
                 key, Citation(item.title, item.source_url, _excerpt(item.content))
             )
         citations = tuple(citations_by_source.values())
-        return GroundedAnswer(_answer_text(response.content), citations, events)
+        return GroundedAnswer(
+            _answer_text(response.content), citations, events, result.attempts
+        )
 
 
 def _grounding_prompt(evidence: tuple[Evidence, ...]) -> str:
