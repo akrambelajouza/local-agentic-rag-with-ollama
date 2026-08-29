@@ -24,6 +24,7 @@ on Windows NT 10.0.26200 with Python 3.12.6:
 
 ```powershell
 git clone --depth 1 https://github.com/akrambelajouza/local-agentic-rag-with-ollama.git
+Set-Location local-agentic-rag-with-ollama
 python -m venv venv
 .\venv\Scripts\python.exe -m pip install -r requirements.lock
 Copy-Item .env.example .env
@@ -81,7 +82,7 @@ committed as a [human summary](../evaluation/results/v1.0.0.md) and
 - Retrieval hit rate: **100%**
 - Answer correctness: **100%**
 - Unsupported claims: **0**
-- Annotated-source citation coverage: **100%**
+- Annotated-source coverage: **100%**
 - Cases: **6** (four answerable and two out-of-corpus decline cases)
 - Duration: **281.95s** on the CPU backend
 
@@ -94,3 +95,18 @@ committed as a [human summary](../evaluation/results/v1.0.0.md) and
 
 GitHub Actions repeats this gate on Windows and Ubuntu with Python 3.11 and 3.12.
 macOS remains explicitly unverified for v1.0.0.
+
+### Post-merge publication sequence
+
+The release URL is intentionally pending while this candidate is under review. After
+the release PR merges and all required checks remain green:
+
+1. Update local `main` and verify the merge commit is the intended release target.
+2. Create annotated tag `v1.0.0` at that merge commit and push the tag.
+3. Publish GitHub release `v1.0.0 — Portfolio release` from the tag using this
+   changelog and validation record as release notes.
+4. Verify the release URL, README links, closed issue, clean default branch, and that
+   no release PR remains open.
+
+The tag will not be created from the pre-merge branch head; this prevents the release
+from omitting the merge commit or diverging from the default branch.

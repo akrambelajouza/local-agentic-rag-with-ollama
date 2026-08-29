@@ -13,7 +13,7 @@ from local_rag.retrieval import Evidence, EvidenceRetriever, RetrievalInput
 
 LOGGER = logging.getLogger(__name__)
 MAX_RETRIEVAL_ATTEMPTS = 2
-DEFAULT_STRONG_EVIDENCE_THRESHOLD = 0.6
+MAX_JUDGE_EVIDENCE = 2
 
 
 class SufficiencyDecision(BaseModel):
@@ -87,7 +87,8 @@ class ModelEvidenceJudge:
     ) -> SufficiencyDecision:
         context = (
             "\n\n".join(
-                f"Title: {item.title}\nContent: {item.content}" for item in evidence
+                f"Title: {item.title}\nContent: {item.content}"
+                for item in evidence[:MAX_JUDGE_EVIDENCE]
             )
             or "No evidence was retrieved."
         )
@@ -99,8 +100,12 @@ class ModelEvidenceJudge:
         decision = self._decision_model.invoke(
             [
                 SystemMessage(
-                    "Decide whether the evidence can fully answer the question. "
-                    "Return only the requested structured fields; do not provide reasoning."
+                    "Decide whether at least one supplied excerpt directly contains the "
+                    "facts needed to answer the question. A definition, description, "
+                    "example, or explicit fact is sufficient even when wording differs. "
+                    "Ignore irrelevant extra excerpts. Use only supplied evidence, not "
+                    "memory. Return only the requested structured fields; do not provide "
+                    "reasoning."
                 ),
                 HumanMessage(
                     f"Question: {question}\nCurrent search: {query}\n"
@@ -116,18 +121,9 @@ class ModelEvidenceJudge:
 class AgenticRetrievalWorkflow:
     """Retrieve, assess, and retry at most once behind one small interface."""
 
-    def __init__(
-        self,
-        retriever: EvidenceRetriever,
-        judge: EvidenceJudge,
-        *,
-        strong_evidence_threshold: float = DEFAULT_STRONG_EVIDENCE_THRESHOLD,
-    ) -> None:
-        if not 0 <= strong_evidence_threshold <= 1:
-            raise ValueError("strong_evidence_threshold must be between 0 and 1")
+    def __init__(self, retriever: EvidenceRetriever, judge: EvidenceJudge) -> None:
         self._retriever = retriever
         self._judge = judge
-        self._strong_evidence_threshold = strong_evidence_threshold
 
     def run(self, question: str) -> RetrievalResult:
         query = question
@@ -160,9 +156,6 @@ class AgenticRetrievalWorkflow:
                 return RetrievalResult(True, evidence, tuple(events), tuple(attempts))
 
             if not can_retry:
-                recovered = self._recover_strong_evidence(evidence, events, attempts)
-                if recovered is not None:
-                    return recovered
                 return self._stop(
                     evidence,
                     events,
@@ -172,9 +165,6 @@ class AgenticRetrievalWorkflow:
 
             rewritten_query = (decision.rewritten_query or "").strip()
             if not rewritten_query or rewritten_query == query:
-                recovered = self._recover_strong_evidence(evidence, events, attempts)
-                if recovered is not None:
-                    return recovered
                 return self._stop(
                     evidence,
                     events,
@@ -190,24 +180,6 @@ class AgenticRetrievalWorkflow:
         return self._stop(
             evidence, events, attempts, "Stopped at the hard retrieval limit."
         )
-
-    def _recover_strong_evidence(
-        self,
-        evidence: tuple[Evidence, ...],
-        events: list[WorkflowEvent],
-        attempts: list[RetrievalAttempt],
-    ) -> RetrievalResult | None:
-        if not any(
-            item.relevance >= self._strong_evidence_threshold for item in evidence
-        ):
-            return None
-        event = WorkflowEvent(
-            "Using directly retrieved evidence with strong relevance after the model "
-            "judge returned an inconclusive decision."
-        )
-        events.append(event)
-        LOGGER.info(event.message)
-        return RetrievalResult(True, evidence, tuple(events), tuple(attempts))
 
     @staticmethod
     def _stop(

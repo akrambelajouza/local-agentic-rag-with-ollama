@@ -31,7 +31,6 @@ class Settings:
     rebuild_index: bool = True
     retrieval_limit: int = 4
     relevance_threshold: float = 0.25
-    strong_evidence_threshold: float = 0.6
 
     @classmethod
     def from_mapping(
@@ -78,9 +77,6 @@ class Settings:
             rebuild_index=_boolean(values, "REBUILD_INDEX", True),
             retrieval_limit=_positive_int(values, "RETRIEVAL_LIMIT", 4),
             relevance_threshold=_bounded_float(values, "RELEVANCE_THRESHOLD", 0.25),
-            strong_evidence_threshold=_bounded_float(
-                values, "STRONG_EVIDENCE_THRESHOLD", 0.6
-            ),
         )
 
 

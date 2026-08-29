@@ -16,6 +16,7 @@ from local_rag.evaluation import (
 from local_rag.evaluation_cli import (
     ClaimSupportGrade,
     ModelClaimSupportJudge,
+    _configured_digest,
     run_local_evaluation,
 )
 from local_rag.evaluation_io import load_evaluation_cases, write_reports
@@ -23,6 +24,12 @@ from local_rag.workflow import RetrievalAttempt
 
 
 class EvaluationMetricTests(unittest.TestCase):
+    def test_model_digest_matches_implicit_latest_tag(self) -> None:
+        self.assertEqual(
+            _configured_digest({"embed:latest": "sha256-value"}, "embed"),
+            "sha256-value",
+        )
+
     def test_claim_judge_detects_mixed_supported_and_unsupported_answer(self) -> None:
         model = MagicMock()
         model.with_structured_output.return_value.invoke.return_value = (
@@ -37,15 +44,12 @@ class EvaluationMetricTests(unittest.TestCase):
 
         self.assertEqual(claims, ("The Moon is made of cheese.",))
 
-    def test_claim_judge_discards_claims_absent_from_answer_or_present_in_evidence(
-        self,
-    ) -> None:
+    def test_claim_judge_discards_claims_that_are_absent_from_the_answer(self) -> None:
         model = MagicMock()
         model.with_structured_output.return_value.invoke.return_value = (
             ClaimSupportGrade(
                 unsupported_claims=[
                     "Python is named after a snake.",
-                    "Python is used for automation.",
                     "The Moon is made of cheese.",
                 ]
             )
@@ -64,6 +68,22 @@ class EvaluationMetricTests(unittest.TestCase):
         )
 
         self.assertEqual(claims, ("The Moon is made of cheese.",))
+
+    def test_claim_judge_retains_number_contradictions_despite_lexical_overlap(
+        self,
+    ) -> None:
+        model = MagicMock()
+        model.with_structured_output.return_value.invoke.return_value = (
+            ClaimSupportGrade(unsupported_claims=["Python was created in 2001."])
+        )
+        judge = ModelClaimSupportJudge(model)
+
+        claims = judge.find_unsupported_claims(
+            "Python was created in 2001.",
+            (Citation("History", "source-one", "Python was created in 1991."),),
+        )
+
+        self.assertEqual(claims, ("Python was created in 2001.",))
 
     def test_live_runner_captures_retrieval_attempts_and_claim_grades(self) -> None:
         assistant = MagicMock()
@@ -122,7 +142,7 @@ class EvaluationMetricTests(unittest.TestCase):
         self.assertAlmostEqual(metrics.answer_correctness, 2 / 3)
         self.assertEqual(metrics.unsupported_claims, 0)
         self.assertEqual(metrics.unsupported_claim_rate, 0.0)
-        self.assertEqual(metrics.citation_accuracy, 0.5)
+        self.assertEqual(metrics.annotated_source_coverage, 0.5)
         self.assertEqual(len(scores), 3)
 
     def test_retrieval_hit_is_independent_of_answer_and_citations(self) -> None:
@@ -140,7 +160,7 @@ class EvaluationMetricTests(unittest.TestCase):
         self.assertTrue(scores[0].retrieval_hit)
         self.assertFalse(scores[0].answer_correct)
 
-    def test_citation_accuracy_measures_annotated_source_coverage(self) -> None:
+    def test_annotated_source_coverage_ignores_unlabelled_extra_sources(self) -> None:
         case = self.cases[0]
         observation = EvaluationObservation(
             case.case_id,
@@ -154,7 +174,7 @@ class EvaluationMetricTests(unittest.TestCase):
 
         metrics, scores = calculate_metrics((case,), (observation,))
 
-        self.assertEqual(metrics.citation_accuracy, 1.0)
+        self.assertEqual(metrics.annotated_source_coverage, 1.0)
         self.assertEqual(scores[0].citation_hits, 1)
         self.assertEqual(scores[0].citation_total, 1)
 
@@ -201,7 +221,7 @@ class EvaluationMetricTests(unittest.TestCase):
                 min_retrieval_hit_rate=0.8,
                 min_answer_correctness=0.8,
                 max_unsupported_claim_rate=0.0,
-                min_citation_accuracy=0.8,
+                min_annotated_source_coverage=0.8,
             ),
         )
 
@@ -221,10 +241,16 @@ class EvaluationMetricTests(unittest.TestCase):
         )
         metrics, scores = calculate_metrics(self.cases, observations)
         metadata = EvaluationMetadata(
+            source_revision="abcde12345",
+            ollama_version="0.33.2",
             chat_model="chat-model",
+            chat_model_digest="chat-digest",
             embedding_model="embed-model",
+            embedding_model_digest="embed-digest",
             chunk_size=1000,
             chunk_overlap=200,
+            retrieval_limit=4,
+            relevance_threshold=0.25,
             dataset_sha256="abc123",
             evaluation_set_sha256="def456",
             duration_seconds=12.5,
@@ -241,6 +267,8 @@ class EvaluationMetricTests(unittest.TestCase):
             summary = human_path.read_text(encoding="utf-8")
 
         self.assertEqual(report["metadata"]["dataset_sha256"], "abc123")
+        self.assertEqual(report["metadata"]["source_revision"], "abcde12345")
+        self.assertEqual(report["metadata"]["retrieval_limit"], 4)
         self.assertEqual(report["metrics"]["retrieval_hit_rate"], 0.5)
         self.assertEqual(report["thresholds"]["min_answer_correctness"], 0.75)
         self.assertIn("RAG Evaluation Summary", summary)

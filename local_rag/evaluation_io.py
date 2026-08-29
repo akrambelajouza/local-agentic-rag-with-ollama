@@ -82,7 +82,7 @@ def write_reports(
         "thresholds": asdict(effective_thresholds),
         "metric_definition": {
             "retrieval_hit_rate": "Expected source retrieved in any workflow attempt.",
-            "citation_accuracy": (
+            "annotated_source_coverage": (
                 "Share of annotated expected sources present in answer citations; "
                 "additional retrieved citations are not labelled as incorrect."
             ),

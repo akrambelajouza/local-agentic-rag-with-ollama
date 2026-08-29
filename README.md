@@ -1,7 +1,7 @@
 # Local Agentic RAG with Ollama
 
 [![Quality](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/actions/workflows/quality.yml/badge.svg)](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/actions/workflows/quality.yml)
-[![Release: v1.0.0](https://img.shields.io/badge/release-v1.0.0-2ea44f.svg)](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/releases/tag/v1.0.0)
+[![Release candidate: v1.0.0](https://img.shields.io/badge/release%20candidate-v1.0.0-2ea44f.svg)](docs/release-validation.md)
 [![Python 3.11–3.12](https://img.shields.io/badge/python-3.11%E2%80%933.12-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -59,16 +59,14 @@ flowchart TD
     Rewrite --> R2[Retrieve once more]
     R2 --> Judge2{Evidence sufficient?}
     Judge2 -->|yes| Generate
-    Judge2 -->|inconclusive + strong relevance| Generate
     Judge2 -->|no| Decline[Return an evidence-safe decline]
     Generate --> Verify[Render citations from stored metadata]
 ```
 
-The retry is deliberately bounded to one rewrite. After that retry, evidence above
-the configured strong-relevance threshold can recover a small model's false-negative
-judgment; weaker evidence still produces a safe decline. The UI reports workflow
-events without exposing hidden model reasoning, and citation URLs come from retrieval
-metadata rather than model-generated text.
+The retry is deliberately bounded to one rewrite. A similarity score can never
+override an insufficient-evidence decision. The UI reports workflow events without
+exposing hidden model reasoning, and citation URLs come from retrieval metadata rather
+than model-generated text.
 
 ## Quick start
 
@@ -131,7 +129,7 @@ python -m local_rag.reference_evaluation
 ```
 
 The committed [reference summary](evaluation/results/reference.md) reports 100% for
-retrieval hit rate, answer correctness, and citation accuracy, with zero unsupported
+retrieval hit rate, answer correctness, and annotated-source coverage, with zero unsupported
 claims. Those numbers validate evaluator wiring against known observations; they are
 not presented as model-quality results.
 
@@ -148,7 +146,7 @@ python -m local_rag.evaluation_cli --output evaluation/results/latest.json
 ```
 
 Default thresholds are 75% retrieval hit rate, 75% answer correctness, 0%
-unsupported-claim cases, and 75% citation accuracy. The command returns a failing
+unsupported-claim cases, and 75% annotated-source coverage. The command returns a failing
 exit status when a threshold is missed and records model/configuration hashes for
 comparison.
 
@@ -241,6 +239,9 @@ Released under the [MIT License](LICENSE).
 
 ## Release
 
-The portfolio-ready [v1.0.0 release](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/releases/tag/v1.0.0)
-is backed by the [release validation record](docs/release-validation.md). See the
-[changelog](CHANGELOG.md) for its concise feature summary.
+This branch is the validated `v1.0.0` release candidate. After it merges, the
+[v1.0.0 release link](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/releases/tag/v1.0.0)
+will resolve when the merge commit is tagged and the GitHub release is published.
+The exact publication sequence is recorded in the
+[release validation record](docs/release-validation.md); see the
+[changelog](CHANGELOG.md) for the concise feature summary.

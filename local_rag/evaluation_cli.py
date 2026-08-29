@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from time import perf_counter
 from typing import Protocol, Sequence
+from urllib.request import urlopen
 
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -71,10 +74,7 @@ class ModelClaimSupportJudge:
             claim.strip() for claim in grade.unsupported_claims if claim.strip()
         )
         return tuple(
-            claim
-            for claim in candidates
-            if _claim_appears_in_answer(claim, answer)
-            and not _claim_has_lexical_support(claim, evidence)
+            claim for claim in candidates if _claim_appears_in_answer(claim, answer)
         )
 
 
@@ -123,10 +123,6 @@ def _coverage(claim: str, context: str) -> float:
 
 def _claim_appears_in_answer(claim: str, answer: str) -> bool:
     return _coverage(claim, answer) >= 0.6
-
-
-def _claim_has_lexical_support(claim: str, evidence: str) -> bool:
-    return _coverage(claim, evidence) >= 0.6
 
 
 def run_local_evaluation(
@@ -186,11 +182,21 @@ def main() -> None:
         }
     )
     failures = threshold_failures(metrics, thresholds)
+    source_revision = _source_revision()
+    ollama_version, model_digests = _ollama_provenance(settings.ollama_base_url)
     metadata = EvaluationMetadata(
+        source_revision=source_revision,
+        ollama_version=ollama_version,
         chat_model=settings.chat_model,
+        chat_model_digest=_configured_digest(model_digests, settings.chat_model),
         embedding_model=settings.embedding_model,
+        embedding_model_digest=_configured_digest(
+            model_digests, settings.embedding_model
+        ),
         chunk_size=settings.chunk_size,
         chunk_overlap=settings.chunk_overlap,
+        retrieval_limit=settings.retrieval_limit,
+        relevance_threshold=settings.relevance_threshold,
         dataset_sha256=sha256_file(settings.dataset_path),
         evaluation_set_sha256=sha256_file(args.cases),
         duration_seconds=perf_counter() - started,
@@ -225,6 +231,45 @@ def _rate(value: str) -> float:
     if not 0 <= rate <= 1:
         raise argparse.ArgumentTypeError("must be from 0 to 1")
     return rate
+
+
+def _source_revision() -> str:
+    result = subprocess.run(
+        ("git", "rev-parse", "HEAD"),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    revision = result.stdout.strip()
+    if result.returncode or len(revision) != 40:
+        raise ValueError("Could not determine the source Git revision")
+    return revision
+
+
+def _ollama_provenance(base_url: str) -> tuple[str, dict[str, str]]:
+    endpoint = base_url.rstrip("/")
+    with urlopen(f"{endpoint}/api/version", timeout=5) as response:  # noqa: S310
+        version_payload = json.load(response)
+    with urlopen(f"{endpoint}/api/tags", timeout=5) as response:  # noqa: S310
+        tags_payload = json.load(response)
+    version = str(version_payload.get("version", "")).strip()
+    models = {
+        str(item.get("name") or item.get("model") or "").strip(): str(
+            item.get("digest", "")
+        ).strip()
+        for item in tags_payload.get("models", [])
+    }
+    if not version:
+        raise ValueError("Ollama did not report a version")
+    return version, models
+
+
+def _configured_digest(model_digests: dict[str, str], configured: str) -> str:
+    canonical = configured.removesuffix(":latest")
+    for model, digest in model_digests.items():
+        if model.removesuffix(":latest") == canonical and digest:
+            return digest
+    raise ValueError(f"Ollama did not report a digest for {configured}")
 
 
 if __name__ == "__main__":

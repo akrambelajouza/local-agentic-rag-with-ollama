@@ -23,7 +23,6 @@ class SettingsTests(unittest.TestCase):
                 "REBUILD_INDEX": "false",
                 "RETRIEVAL_LIMIT": "6",
                 "RELEVANCE_THRESHOLD": "0.7",
-                "STRONG_EVIDENCE_THRESHOLD": "0.8",
             },
             base_directory=Path("workspace"),
         )
@@ -40,7 +39,6 @@ class SettingsTests(unittest.TestCase):
         self.assertFalse(settings.rebuild_index)
         self.assertEqual(settings.retrieval_limit, 6)
         self.assertEqual(settings.relevance_threshold, 0.7)
-        self.assertEqual(settings.strong_evidence_threshold, 0.8)
 
     def test_reports_all_missing_required_settings(self) -> None:
         with self.assertRaisesRegex(

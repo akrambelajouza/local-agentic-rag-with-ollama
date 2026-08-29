@@ -46,7 +46,7 @@ class EvaluationMetrics:
     answer_correctness: float
     unsupported_claims: int
     unsupported_claim_rate: float
-    citation_accuracy: float
+    annotated_source_coverage: float
     case_count: int
 
 
@@ -55,15 +55,21 @@ class EvaluationThresholds:
     min_retrieval_hit_rate: float
     min_answer_correctness: float
     max_unsupported_claim_rate: float
-    min_citation_accuracy: float
+    min_annotated_source_coverage: float
 
 
 @dataclass(frozen=True, slots=True)
 class EvaluationMetadata:
+    source_revision: str
+    ollama_version: str
     chat_model: str
+    chat_model_digest: str
     embedding_model: str
+    embedding_model_digest: str
     chunk_size: int
     chunk_overlap: int
+    retrieval_limit: int
+    relevance_threshold: float
     dataset_sha256: str
     evaluation_set_sha256: str
     duration_seconds: float
@@ -108,9 +114,9 @@ METRIC_DEFINITIONS = (
         count_field="unsupported_claims",
     ),
     MetricDefinition(
-        "citation_accuracy",
-        "Citation accuracy",
-        "min_citation_accuracy",
+        "annotated_source_coverage",
+        "Annotated-source coverage",
+        "min_annotated_source_coverage",
         "min",
         0.75,
     ),
@@ -195,7 +201,7 @@ def calculate_metrics(
         ),
         unsupported_claims=unsupported_count,
         unsupported_claim_rate=_ratio(unsupported_case_count, len(scores)),
-        citation_accuracy=_ratio(
+        annotated_source_coverage=_ratio(
             sum(score.citation_hits for score in scores), citation_total
         ),
         case_count=len(scores),

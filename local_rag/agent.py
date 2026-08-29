@@ -18,11 +18,7 @@ def build_assistant(settings: Settings) -> GroundedAssistant:
         base_url=settings.ollama_base_url,
     )
     retriever = ChromaEvidenceRetriever(settings)
-    workflow = AgenticRetrievalWorkflow(
-        retriever,
-        ModelEvidenceJudge(model),
-        strong_evidence_threshold=settings.strong_evidence_threshold,
-    )
+    workflow = AgenticRetrievalWorkflow(retriever, ModelEvidenceJudge(model))
     return GroundedAssistant(model, workflow)
 
 
