@@ -40,8 +40,8 @@ class StubJudge:
         return decision
 
 
-def evidence(label: str) -> tuple[Evidence, ...]:
-    return (Evidence(label, f"https://source.test/{label}", label, 0.9),)
+def evidence(label: str, relevance: float = 0.9) -> tuple[Evidence, ...]:
+    return (Evidence(label, f"https://source.test/{label}", label, relevance),)
 
 
 class AgenticRetrievalWorkflowTests(unittest.TestCase):
@@ -59,6 +59,29 @@ class AgenticRetrievalWorkflowTests(unittest.TestCase):
                 evidence("weak"),
                 can_retry=True,
             )
+
+    def test_model_judge_limits_context_to_the_two_most_relevant_excerpts(self) -> None:
+        model = MagicMock()
+        model.with_structured_output.return_value.invoke.return_value = (
+            SufficiencyDecision(sufficient=True)
+        )
+        judge = ModelEvidenceJudge(model)
+        supplied = tuple(
+            Evidence(
+                f"content-{index}",
+                f"https://source.test/{index}",
+                f"title-{index}",
+                1 - index / 10,
+            )
+            for index in range(3)
+        )
+
+        judge.evaluate("Question", "Question", supplied, can_retry=True)
+
+        messages = model.with_structured_output.return_value.invoke.call_args.args[0]
+        self.assertIn("content-0", messages[1].content)
+        self.assertIn("content-1", messages[1].content)
+        self.assertNotIn("content-2", messages[1].content)
 
     def test_sufficient_initial_retrieval_proceeds_without_rewrite(self) -> None:
         retriever = StubRetriever([evidence("initial")])
@@ -94,7 +117,7 @@ class AgenticRetrievalWorkflowTests(unittest.TestCase):
         self.assertIn("Retrying retrieval", result.events[0].message)
 
     def test_failed_rewrite_stops_honestly_without_second_retrieval(self) -> None:
-        retriever = StubRetriever([evidence("weak")])
+        retriever = StubRetriever([evidence("weak", 0.4)])
         judge = StubJudge([SufficiencyDecision(sufficient=False, rewritten_query="  ")])
 
         result = AgenticRetrievalWorkflow(retriever, judge).run("Question")
@@ -104,7 +127,7 @@ class AgenticRetrievalWorkflowTests(unittest.TestCase):
         self.assertIn("could not produce a safe rewrite", result.events[-1].message)
 
     def test_retry_limit_stops_after_two_retrieval_attempts(self) -> None:
-        retriever = StubRetriever([evidence("weak"), evidence("still-weak")])
+        retriever = StubRetriever([evidence("weak", 0.4), evidence("still-weak", 0.45)])
         judge = StubJudge(
             [
                 SufficiencyDecision(sufficient=False, rewritten_query="retry"),

@@ -40,6 +40,7 @@ class RuntimeConfigurationTests(unittest.TestCase):
             "chat-model",
             model_provider="ollama",
             temperature=0,
+            num_predict=512,
             base_url="http://ollama.internal:11434",
         )
         chat_model.return_value.with_structured_output.assert_called_once_with(

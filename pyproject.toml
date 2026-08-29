@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "local-agentic-rag-with-ollama"
-version = "0.1.0"
-description = "A local retrieval-augmented chatbot powered by Ollama and Chroma."
+version = "1.0.0"
+description = "Local-first agentic RAG with grounded citations and bounded retry."
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 dependencies = [

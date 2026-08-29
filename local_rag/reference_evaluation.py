@@ -68,10 +68,17 @@ def main() -> None:
     human_path = write_reports(
         machine_path,
         EvaluationMetadata(
+            source_revision="deterministic-offline-reference",
+            ollama_version="not-applicable",
             chat_model="offline-reference-fixture",
+            chat_model_digest="not-applicable",
             embedding_model="offline-reference-fixture",
+            embedding_model_digest="not-applicable",
             chunk_size=1000,
             chunk_overlap=200,
+            retrieval_limit=4,
+            relevance_threshold=0.25,
+            max_generation_tokens=512,
             dataset_sha256=sha256_file(dataset_path),
             evaluation_set_sha256=sha256_file(cases_path),
             duration_seconds=0.0,

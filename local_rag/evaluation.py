@@ -46,7 +46,7 @@ class EvaluationMetrics:
     answer_correctness: float
     unsupported_claims: int
     unsupported_claim_rate: float
-    citation_accuracy: float
+    annotated_source_coverage: float
     case_count: int
 
 
@@ -55,15 +55,22 @@ class EvaluationThresholds:
     min_retrieval_hit_rate: float
     min_answer_correctness: float
     max_unsupported_claim_rate: float
-    min_citation_accuracy: float
+    min_annotated_source_coverage: float
 
 
 @dataclass(frozen=True, slots=True)
 class EvaluationMetadata:
+    source_revision: str
+    ollama_version: str
     chat_model: str
+    chat_model_digest: str
     embedding_model: str
+    embedding_model_digest: str
     chunk_size: int
     chunk_overlap: int
+    retrieval_limit: int
+    relevance_threshold: float
+    max_generation_tokens: int
     dataset_sha256: str
     evaluation_set_sha256: str
     duration_seconds: float
@@ -108,9 +115,9 @@ METRIC_DEFINITIONS = (
         count_field="unsupported_claims",
     ),
     MetricDefinition(
-        "citation_accuracy",
-        "Citation accuracy",
-        "min_citation_accuracy",
+        "annotated_source_coverage",
+        "Annotated-source coverage",
+        "min_annotated_source_coverage",
         "min",
         0.75,
     ),
@@ -165,7 +172,8 @@ def calculate_metrics(
         unsupported_claims = observation.unsupported_claims
         if not declined and not cited_sources and not unsupported_claims:
             unsupported_claims = (observation.answer,)
-        citation_hits = sum(source in expected_sources for source in cited_sources)
+        citation_hits = len(expected_sources.intersection(cited_sources))
+        citation_total = len(expected_sources) if case.answerable else 0
         scores.append(
             CaseScore(
                 case.case_id,
@@ -173,7 +181,7 @@ def calculate_metrics(
                 answer_correct,
                 unsupported_claims,
                 citation_hits,
-                len(cited_sources),
+                citation_total,
                 observation.answer,
                 retrieved_sources,
                 cited_sources,
@@ -194,7 +202,7 @@ def calculate_metrics(
         ),
         unsupported_claims=unsupported_count,
         unsupported_claim_rate=_ratio(unsupported_case_count, len(scores)),
-        citation_accuracy=_ratio(
+        annotated_source_coverage=_ratio(
             sum(score.citation_hits for score in scores), citation_total
         ),
         case_count=len(scores),

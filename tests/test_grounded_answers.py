@@ -9,6 +9,25 @@ from local_rag.workflow import DirectRetrievalWorkflow, RetrievalResult, Workflo
 
 
 class GroundedAnswerTests(unittest.TestCase):
+    def test_citation_excerpt_retains_support_late_in_a_chunk(self) -> None:
+        model = MagicMock()
+        model.invoke.return_value = AIMessage("Late supported fact.")
+        retriever = MagicMock()
+        retriever.retrieve.return_value = (
+            Evidence(
+                "A" * 500 + " Late supported fact.",
+                "https://source.test",
+                "Long source",
+                0.9,
+            ),
+        )
+
+        answer = GroundedAssistant(model, DirectRetrievalWorkflow(retriever)).answer(
+            "Question?", []
+        )
+
+        self.assertIn("Late supported fact.", answer.citations[0].excerpt)
+
     def test_agentic_workflow_events_and_evidence_drive_the_answer(self) -> None:
         model = MagicMock()
         model.invoke.return_value = AIMessage("Answer")

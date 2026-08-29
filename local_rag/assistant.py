@@ -112,7 +112,7 @@ def _answer_text(content: object) -> str:
     return text.strip()
 
 
-def _excerpt(content: str, limit: int = 280) -> str:
+def _excerpt(content: str, limit: int = 1000) -> str:
     compact = " ".join(content.split())
     if len(compact) <= limit:
         return compact

@@ -42,7 +42,7 @@ class PortfolioPresentationTests(unittest.TestCase):
         self.assertEqual(metrics.retrieval_hit_rate, 1.0)
         self.assertEqual(metrics.answer_correctness, 1.0)
         self.assertEqual(metrics.unsupported_claim_rate, 0.0)
-        self.assertEqual(metrics.citation_accuracy, 1.0)
+        self.assertEqual(metrics.annotated_source_coverage, 1.0)
 
     def test_no_ollama_portfolio_preview_is_explicitly_read_only(self) -> None:
         app = AppTest.from_file(

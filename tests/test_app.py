@@ -16,8 +16,14 @@ class StreamlitStartupTests(unittest.TestCase):
         settings_patcher = patch(
             "local_rag.app.load_settings", return_value=MagicMock(spec=Settings)
         )
+        readiness_patcher = patch(
+            "local_rag.app.assess_readiness",
+            return_value=MagicMock(ready=False, checks=[]),
+        )
         settings_patcher.start()
+        readiness_patcher.start()
         self.addCleanup(settings_patcher.stop)
+        self.addCleanup(readiness_patcher.stop)
 
     def test_initial_page_renders_without_sending_a_model_request(self) -> None:
         app_path = Path(__file__).resolve().parents[1] / "app.py"

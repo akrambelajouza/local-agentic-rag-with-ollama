@@ -6,6 +6,8 @@ snapshot.txt
 /evaluation/results/*
 !/evaluation/results/reference.json
 !/evaluation/results/reference.md
+!/evaluation/results/v1.0.0.json
+!/evaluation/results/v1.0.0.md
 .coverage
 htmlcov/
 coverage.xml

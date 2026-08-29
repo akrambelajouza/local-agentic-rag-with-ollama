@@ -13,6 +13,7 @@ from local_rag.retrieval import Evidence, EvidenceRetriever, RetrievalInput
 
 LOGGER = logging.getLogger(__name__)
 MAX_RETRIEVAL_ATTEMPTS = 2
+MAX_JUDGE_EVIDENCE = 2
 
 
 class SufficiencyDecision(BaseModel):
@@ -86,7 +87,8 @@ class ModelEvidenceJudge:
     ) -> SufficiencyDecision:
         context = (
             "\n\n".join(
-                f"Title: {item.title}\nContent: {item.content}" for item in evidence
+                f"Title: {item.title}\nContent: {item.content}"
+                for item in evidence[:MAX_JUDGE_EVIDENCE]
             )
             or "No evidence was retrieved."
         )
@@ -98,8 +100,12 @@ class ModelEvidenceJudge:
         decision = self._decision_model.invoke(
             [
                 SystemMessage(
-                    "Decide whether the evidence can fully answer the question. "
-                    "Return only the requested structured fields; do not provide reasoning."
+                    "Decide whether at least one supplied excerpt directly contains the "
+                    "facts needed to answer the question. A definition, description, "
+                    "example, or explicit fact is sufficient even when wording differs. "
+                    "Ignore irrelevant extra excerpts. Use only supplied evidence, not "
+                    "memory. Return only the requested structured fields; do not provide "
+                    "reasoning."
                 ),
                 HumanMessage(
                     f"Question: {question}\nCurrent search: {query}\n"
