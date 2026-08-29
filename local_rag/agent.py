@@ -15,6 +15,7 @@ def build_assistant(settings: Settings) -> GroundedAssistant:
         settings.chat_model,
         model_provider=settings.model_provider,
         temperature=0,
+        num_predict=settings.max_generation_tokens,
         base_url=settings.ollama_base_url,
     )
     retriever = ChromaEvidenceRetriever(settings)

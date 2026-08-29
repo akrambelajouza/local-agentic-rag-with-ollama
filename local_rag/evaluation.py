@@ -70,6 +70,7 @@ class EvaluationMetadata:
     chunk_overlap: int
     retrieval_limit: int
     relevance_threshold: float
+    max_generation_tokens: int
     dataset_sha256: str
     evaluation_set_sha256: str
     duration_seconds: float

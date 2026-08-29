@@ -251,6 +251,7 @@ class EvaluationMetricTests(unittest.TestCase):
             chunk_overlap=200,
             retrieval_limit=4,
             relevance_threshold=0.25,
+            max_generation_tokens=512,
             dataset_sha256="abc123",
             evaluation_set_sha256="def456",
             duration_seconds=12.5,

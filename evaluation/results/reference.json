@@ -10,6 +10,7 @@
     "chunk_overlap": 200,
     "retrieval_limit": 4,
     "relevance_threshold": 0.25,
+    "max_generation_tokens": 512,
     "dataset_sha256": "5c161ce9584de37521d1f5be78e5f5b440567dcb7f86e27b56f3536d3b098fe8",
     "evaluation_set_sha256": "8b57da14e62874c1cd5d70bf9a67008c66717be39069b3bdeb05bfea15e0faae",
     "duration_seconds": 0.0,

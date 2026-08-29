@@ -31,6 +31,7 @@ class Settings:
     rebuild_index: bool = True
     retrieval_limit: int = 4
     relevance_threshold: float = 0.25
+    max_generation_tokens: int = 512
 
     @classmethod
     def from_mapping(
@@ -77,6 +78,7 @@ class Settings:
             rebuild_index=_boolean(values, "REBUILD_INDEX", True),
             retrieval_limit=_positive_int(values, "RETRIEVAL_LIMIT", 4),
             relevance_threshold=_bounded_float(values, "RELEVANCE_THRESHOLD", 0.25),
+            max_generation_tokens=_positive_int(values, "MAX_GENERATION_TOKENS", 512),
         )
 
 

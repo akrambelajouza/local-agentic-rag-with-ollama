@@ -169,6 +169,7 @@ def main() -> None:
         settings.chat_model,
         model_provider=settings.model_provider,
         temperature=0,
+        num_predict=settings.max_generation_tokens,
         base_url=settings.ollama_base_url,
     )
     observations = run_local_evaluation(
@@ -197,6 +198,7 @@ def main() -> None:
         chunk_overlap=settings.chunk_overlap,
         retrieval_limit=settings.retrieval_limit,
         relevance_threshold=settings.relevance_threshold,
+        max_generation_tokens=settings.max_generation_tokens,
         dataset_sha256=sha256_file(settings.dataset_path),
         evaluation_set_sha256=sha256_file(args.cases),
         duration_seconds=perf_counter() - started,
