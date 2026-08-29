@@ -1,184 +1,170 @@
-# Local Agentic RAG with Ollama and Chroma DB
+# Local Agentic RAG with Ollama
 
-A simple, local implementation of Retrieval-Augmented Generation (RAG) using Ollama for embeddings and chat models, and Chroma DB as the vector database. This project enables you to build a chatbot that can answer questions based on your own documents.
+[![Quality](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/actions/workflows/quality.yml/badge.svg)](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/actions/workflows/quality.yml)
+[![Python 3.11–3.12](https://img.shields.io/badge/python-3.11%E2%80%933.12-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## 🎯 Overview
+A local-first retrieval-augmented generation (RAG) application that answers
+questions from your documents, shows the supporting excerpts, and declines when
+the evidence is insufficient. Ollama runs both models on your machine and Chroma
+stores the index locally, so documents and prompts do not need to leave the host.
 
-This project consists of two main components:
+The project demonstrates more than a happy-path chatbot: safe index replacement,
+startup diagnostics, bounded agentic query retry, source verification, an evaluation
+harness, a tested Streamlit interface, and cross-platform CI.
 
-1. **Embedding Generation** (`1_generate_embedding.py`): Processes JSON-formatted documents, creates embeddings, and stores them in Chroma DB
-2. **Chatbot Interface** (`2_start_chatbot.py`): A Streamlit-based web interface that uses an agentic RAG system to answer questions based on the stored documents
+## Grounded-answer demo
 
-## 📋 Prerequisites
+![A grounded answer with its verified source and evidence excerpt](docs/portfolio-demo.svg)
 
-Before you begin, ensure you have the following installed:
-
-- **Python 3.11 or 3.12** - [Download Python](https://www.python.org/downloads/)
-- **Ollama** - [Install Ollama](https://ollama.com/)
-  - After installation, pull the required models:
-    ```bash
-    ollama pull mxbai-embed-large  # Embedding model
-    ollama pull llama3.2:3b        # Chat model
-    ```
-
-## 🚀 Installation
-
-### 1. Clone the Repository
+This is a deterministic preview built from `datasets/data.txt`, not a claimed live
+model run. Reproduce the read-only UI preview without Ollama:
 
 ```bash
-git clone <repository-url>
+streamlit run portfolio_demo.py
+```
+
+The production application uses the same presentation but generates answers from
+the locally retrieved chunks.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Corpus[JSONL documents] --> Validate[Validate every record]
+    Validate --> Chunk[Split into chunks]
+    Chunk --> Embed[Ollama embeddings]
+    Embed --> Stage[Staging Chroma index]
+    Stage -->|successful build| Index[(Active local index)]
+
+    User[Streamlit user] --> Agent[Grounded assistant]
+    Agent --> Index
+    Agent --> Chat[Ollama chat model]
+    Chat --> Answer[Answer + verified citations]
+```
+
+Ingestion builds in an isolated directory and replaces the active index only after
+the complete build succeeds. Model names, chunk settings, paths, retrieval limits,
+and thresholds come from `.env`.
+
+## Agent flow
+
+```mermaid
+flowchart TD
+    Q[Question] --> R1[Retrieve local chunks]
+    R1 --> Judge{Evidence sufficient?}
+    Judge -->|yes| Generate[Generate only from evidence]
+    Judge -->|no, retry unused| Rewrite[Rewrite search once]
+    Rewrite --> R2[Retrieve once more]
+    R2 --> Judge2{Evidence sufficient?}
+    Judge2 -->|yes| Generate
+    Judge2 -->|no| Decline[Return an evidence-safe decline]
+    Generate --> Verify[Render citations from stored metadata]
+```
+
+The retry is deliberately bounded to one rewrite. The UI reports workflow events
+without exposing hidden model reasoning, and citation URLs come from retrieval
+metadata rather than model-generated text.
+
+## Quick start
+
+Prerequisites: Git, Python 3.11 or 3.12, and
+[Ollama](https://ollama.com/download). Commands below use the repository's pinned
+dependency set.
+
+```bash
+git clone https://github.com/akrambelajouza/local-agentic-rag-with-ollama.git
 cd local-agentic-rag-with-ollama
+python -m venv venv
 ```
 
-### 2. Create a Virtual Environment
+Activate and configure on Windows PowerShell:
 
-**Windows:**
-```bash
-python -m venv venv
-venv\Scripts\activate
+```powershell
+.\venv\Scripts\Activate.ps1
+python -m pip install -r requirements.lock
+Copy-Item .env.example .env
 ```
 
-**macOS/Linux:**
+Activate and configure on macOS/Linux:
+
 ```bash
-python -m venv venv
 source venv/bin/activate
+python -m pip install -r requirements.lock
+cp .env.example .env
 ```
 
-### 3. Install Dependencies
+Install the configured local models, verify prerequisites, build the index, and
+start the app:
 
 ```bash
-pip install -r requirements.lock
-```
-
-### 4. Configure Environment Variables
-
-Create a `.env` file in the project root (you can use `.env.example` as a template).
-
-**Note:** Ensure your data file is located at `DATASET_STORAGE_FOLDER/data.txt` in JSONL format (one JSON object per line) with the following structure:
-```json
-{"url": "https://example.com", "title": "Document Title", "raw_text": "Document content here..."}
-```
-
-## 💻 Usage
-
-### Step 1: Generate Embeddings
-
-Check every local prerequisite first. The command exits with a non-zero status and
-prints a corrective action for each failed check:
-
-```bash
+ollama pull mxbai-embed-large
+ollama pull llama3.2:3b
 python -m local_rag.readiness
-```
-
-First, process your documents and create embeddings:
-
-```bash
 python -m local_rag.ingestion
-```
-
-This script will:
-- Load your documents from the configured data file
-- Split them into chunks
-- Generate embeddings using Ollama
-- Store them in Chroma DB
-
-Ingestion validates the complete dataset and builds in an isolated directory before
-replacing the active index. Configure it in `.env` with `CHUNK_SIZE`,
-`CHUNK_OVERLAP`, `BATCH_SIZE`, and `REBUILD_INDEX`. Keep `REBUILD_INDEX=true` for
-safe full replacement; set it to `false` to refuse overwriting an existing index.
-Successful runs report document/chunk totals, failures, model, destination, and duration.
-
-### Step 2: Start the Chatbot
-
-Once embeddings are generated, start the Streamlit chatbot interface:
-
-```bash
+python -m local_rag.readiness
 streamlit run app.py
 ```
 
-The chatbot will open in your browser. You can now ask questions based on your documents!
+Readiness must report that configuration, corpus, Ollama, both models, and the
+vector collection are available. The first readiness run may report the collection
+as missing; ingestion creates it.
 
-Each answer is generated from retrieved evidence, and source links are rendered from
-the index metadata rather than trusted from model-generated text. Questions without
-evidence above the configured threshold receive a clear decline. Tune retrieval in
-`.env` with `RETRIEVAL_LIMIT` (maximum chunks) and `RELEVANCE_THRESHOLD` (a value
-from `0` to `1`).
+## Reproducible examples and evaluation
 
-Before answering, a structured sufficiency check evaluates the retrieved evidence.
-Weak evidence triggers at most one rewritten search and one additional retrieval;
-after that hard limit, the assistant stops honestly instead of looping or guessing.
-The retry decision is shown as a short UI status and logged without exposing model
-reasoning.
+The included Python corpus and `evaluation/questions.jsonl` make these scenarios
+repeatable:
 
-## 📊 Evaluate RAG quality
+- `Who created Python?` → answer includes Guido van Rossum and a python.org source.
+- `Why is the language called Python?` → answer cites the Monty Python origin.
+- `Name three common uses for Python.` → answer covers web, data science, and automation.
+- `What is the capital of France?` → the assistant declines because the corpus lacks evidence.
 
-The curated set in `evaluation/questions.jsonl` includes answerable questions with
-expected sources and intentionally unanswerable questions. After Ollama is running
-and the sample corpus is indexed, run:
+Run the offline evaluator reference fixture (no Ollama required):
+
+```bash
+python -m local_rag.reference_evaluation
+```
+
+The committed [reference summary](evaluation/results/reference.md) reports 100% for
+retrieval hit rate, answer correctness, and citation accuracy, with zero unsupported
+claims. Those numbers validate evaluator wiring against known observations; they are
+not presented as model-quality results.
+
+After indexing the corpus, run the real local models and write a timestamped report:
 
 ```bash
 python -m local_rag.evaluation_cli --output evaluation/results/latest.json
 ```
 
-The command writes a machine-readable JSON report and a concise Markdown summary.
-It reports retrieval hit rate, answer correctness, high-confidence unsupported
-claims, and citation accuracy, together with model names, chunk settings, dataset
-and evaluation-set hashes, timestamp, and duration. The unsupported-claim metric is
-produced by a structured claim-level judgment against the displayed source excerpts;
-uncited non-declined answers are always counted as unsupported.
+Default thresholds are 75% retrieval hit rate, 75% answer correctness, 0%
+unsupported-claim cases, and 75% citation accuracy. The command returns a failing
+exit status when a threshold is missed and records model/configuration hashes for
+comparison.
 
-Default quality thresholds return exit code `1` when missed (runtime or input errors
-use exit code `2`). Override thresholds with `--min-retrieval-hit-rate`,
-`--min-answer-correctness`, `--max-unsupported-claim-rate`, and
-`--min-citation-accuracy`.
+## Engineering choices and tradeoffs
 
-## 📁 Project Structure
+| Choice | Benefit | Tradeoff |
+| --- | --- | --- |
+| Ollama | Private, offline-capable inference | Local model quality and speed depend on hardware |
+| Chroma | Simple persistent vector search | A single-host store is not a distributed production database |
+| Structured sufficiency judge | Makes retry/decline behavior testable | Adds a model call before generation |
+| One retry maximum | Prevents loops, latency spikes, and hidden cost | A second rewrite strategy may sometimes recover more answers |
+| Metadata-derived citations | Prevents invented source URLs | Correctness still depends on retrieval and chunk quality |
+| Atomic full rebuild | Keeps the last valid index on failure | Requires temporary disk space during ingestion |
 
-```
-local-agentic-rag-with-ollama/
-├── app.py                      # Canonical Streamlit launcher
-├── local_rag/                  # Importable application package
-├── tests/                      # Baseline automated tests
-├── pyproject.toml              # Direct dependencies and package metadata
-├── requirements.lock          # Reproducible dependency lock
-├── 1_generate_embedding.py    # Backward-compatible ingestion launcher
-├── 2_start_chatbot.py         # Backward-compatible Streamlit launcher
-├── .env                        # Environment variables (create this)
-├── .env.example               # Example environment file
-├── chroma_db/                  # Chroma DB storage (created automatically)
-└── datasets/                      # Your document data folder
-    └── data.txt               # JSONL formatted documents
-```
+## Quality checks
 
-## ✅ Development checks
-
-Install the pinned development tools once:
+Install the pinned development tools and run the same gate as CI:
 
 ```bash
 python -m pip install -r requirements-dev.lock
-```
-
-Run the complete deterministic gate used by pull requests:
-
-```bash
 python scripts/quality.py
 ```
 
-The individual commands are:
-
-```bash
-python -m ruff format --check .       # formatting
-python -m ruff check .                # linting
-python -m unittest discover -v        # unit tests; live Ollama test is skipped
-python -m unittest tests.test_app -v  # Streamlit smoke and interaction tests
-python -m coverage run -m unittest discover -v
-python -m coverage report             # fails below 85% core-package coverage
-python -m pip check                    # dependency consistency
-```
-
-GitHub Actions runs the same `python scripts/quality.py` command on Windows and
-Ubuntu with Python 3.11 and 3.12, without downloading Ollama models. To opt into
-the live local-stack smoke test:
+The gate runs formatting, linting, 60+ unit/UI tests, branch coverage with an 85%
+floor, and dependency consistency. GitHub Actions executes it on Windows and Ubuntu
+with Python 3.11 and 3.12. Live Ollama is intentionally opt-in:
 
 ```powershell
 $env:RUN_LIVE_OLLAMA="1"
@@ -189,27 +175,55 @@ python -m unittest tests.test_live_ollama -v
 RUN_LIVE_OLLAMA=1 python -m unittest tests.test_live_ollama -v
 ```
 
-## 🔧 How It Works
+Useful individual commands:
 
-1. **Document Processing**: Documents are loaded from JSONL format and split into chunks using `RecursiveCharacterTextSplitter`
-2. **Embedding Generation**: Each chunk is converted to embeddings using Ollama's embedding model
-3. **Vector Storage**: Embeddings are stored in Chroma DB with metadata (source URL, title)
-4. **Retrieval**: The system retrieves the most relevant document chunks
-5. **Agentic Check**: A typed sufficiency decision can rewrite and retry the search once
-6. **Generation**: The local model answers only from sufficient evidence, with verified source citations
+```bash
+python -m ruff format --check .
+python -m ruff check .
+python -m unittest discover -v
+python -m unittest tests.test_app -v
+python -m coverage run -m unittest discover -v
+python -m coverage report
+python -m pip check
+```
 
-## 📚 Further Reading
+## Limitations and future work
 
-- [Vector Embeddings Explained](https://www.ibm.com/think/topics/vector-embedding)
-- [Ollama Embedding Models](https://ollama.com/blog/embedding-models)
-- [Chroma DB with LangChain](https://python.langchain.com/docs/integrations/vectorstores/chroma/)
-- [Ollama Text Embeddings](https://python.langchain.com/docs/integrations/text_embedding/ollama/)
-- [mxbai-embed-large Model](https://ollama.com/library/mxbai-embed-large)
-- [Qwen3 Model](https://ollama.com/library/qwen3)
+- The default sample is small and English-only; production use needs representative
+  documents and a broader evaluation set.
+- Evaluation quality varies with local model version and hardware.
+- Chroma is local and single-user; there is no authentication or multi-tenant layer.
+- Supported input is JSONL text. PDF/HTML parsing and incremental ingestion are
+  natural next steps.
+- Retrieval currently uses dense similarity only. Hybrid search and reranking could
+  improve difficult corpora.
+- The UI is synchronous and optimized for a local demonstration, not concurrent load.
 
-## ⚠️ Troubleshooting
+## Troubleshooting
 
-- **Ollama not found**: Ensure Ollama is installed and running. Check with `ollama list`
-- **Model not found**: Pull the required models using `ollama pull <model-name>`
-- **Database errors**: Delete the `chroma_db` folder and regenerate embeddings
-- **Import errors**: Ensure your virtual environment is activated and all dependencies are installed
+| Symptom | Resolution |
+| --- | --- |
+| `Cannot reach http://localhost:11434` | Start Ollama (`ollama serve`) and confirm `OLLAMA_BASE_URL`. |
+| A configured model is missing | Run `ollama pull mxbai-embed-large` and `ollama pull llama3.2:3b`. |
+| Collection is missing or empty | Run `python -m local_rag.ingestion`, then readiness again. |
+| Configuration is invalid | Copy `.env.example` to `.env`; keep `CHUNK_OVERLAP < CHUNK_SIZE`. |
+| An answer is declined | Lowering the threshold may reduce precision; first inspect whether the corpus actually contains the answer. |
+| A rebuild fails | The prior active index remains intact; correct the dataset/model issue and rerun ingestion. |
+
+## Project map
+
+```text
+local_rag/                 application, retrieval, workflow, ingestion, evaluation
+datasets/data.txt          included JSONL sample corpus
+evaluation/questions.jsonl curated answerable and unanswerable cases
+portfolio_demo.py          deterministic read-only portfolio preview
+tests/                     unit, Streamlit, ingestion-safety, and opt-in live tests
+scripts/quality.py         local/CI quality gate
+```
+
+`1_generate_embedding.py` and `2_start_chatbot.py` remain only as backward-compatible
+launchers; new usage should prefer the package commands documented above.
+
+## License
+
+Released under the [MIT License](LICENSE).

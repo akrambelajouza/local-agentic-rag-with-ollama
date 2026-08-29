@@ -3,7 +3,9 @@ venv
 __pycache__/
 /chroma_db
 snapshot.txt
-/evaluation/results/
+/evaluation/results/*
+!/evaluation/results/reference.json
+!/evaluation/results/reference.md
 .coverage
 htmlcov/
 coverage.xml

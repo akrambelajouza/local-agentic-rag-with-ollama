@@ -61,10 +61,10 @@ class StreamlitStartupTests(unittest.TestCase):
         ]
         streamlit.chat_input.return_value = None
 
-        render_app()
+        render_app(citations_expanded=True)
 
         streamlit.markdown.assert_any_call("[https://source.test](https://source.test)")
-        streamlit.expander.assert_called_once_with("Stored source")
+        streamlit.expander.assert_called_once_with("Stored source", expanded=True)
         streamlit.caption.assert_any_call(
             "Supporting excerpt from the indexed document."
         )

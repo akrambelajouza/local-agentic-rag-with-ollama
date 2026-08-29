@@ -1,0 +1,115 @@
+{
+  "metadata": {
+    "chat_model": "offline-reference-fixture",
+    "embedding_model": "offline-reference-fixture",
+    "chunk_size": 1000,
+    "chunk_overlap": 200,
+    "dataset_sha256": "5c161ce9584de37521d1f5be78e5f5b440567dcb7f86e27b56f3536d3b098fe8",
+    "evaluation_set_sha256": "55f82e918149234a1079c2102701d7bd9bef2893f8698466c6603d5d2f4efbf2",
+    "duration_seconds": 0.0,
+    "run_at": "deterministic-offline-reference"
+  },
+  "metrics": {
+    "retrieval_hit_rate": 1.0,
+    "answer_correctness": 1.0,
+    "unsupported_claims": 0,
+    "unsupported_claim_rate": 0.0,
+    "citation_accuracy": 1.0,
+    "case_count": 6
+  },
+  "thresholds": {
+    "min_retrieval_hit_rate": 0.75,
+    "min_answer_correctness": 0.75,
+    "max_unsupported_claim_rate": 0.0,
+    "min_citation_accuracy": 0.75
+  },
+  "metric_definition": {
+    "retrieval_hit_rate": "Expected source retrieved in any workflow attempt.",
+    "unsupported_claims": "Claim-level judgments against cited excerpts; uncited non-declined answers count as unsupported."
+  },
+  "threshold_failures": [],
+  "cases": [
+    {
+      "case_id": "python-creator",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "unsupported_claims": [],
+      "citation_hits": 1,
+      "citation_total": 1,
+      "answer": "Python was created by Guido van Rossum.",
+      "retrieved_sources": [
+        "https://www.python.org/about/help/"
+      ],
+      "cited_sources": [
+        "https://www.python.org/about/help/"
+      ]
+    },
+    {
+      "case_id": "python-name",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "unsupported_claims": [],
+      "citation_hits": 1,
+      "citation_total": 1,
+      "answer": "The name Python is a tribute to Monty Python.",
+      "retrieved_sources": [
+        "https://www.python.org/about/"
+      ],
+      "cited_sources": [
+        "https://www.python.org/about/"
+      ]
+    },
+    {
+      "case_id": "python-uses",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "unsupported_claims": [],
+      "citation_hits": 1,
+      "citation_total": 1,
+      "answer": "Common uses include web development, data science, and automation.",
+      "retrieved_sources": [
+        "https://www.python.org/about/apps/"
+      ],
+      "cited_sources": [
+        "https://www.python.org/about/apps/"
+      ]
+    },
+    {
+      "case_id": "python-list-comprehensions",
+      "retrieval_hit": true,
+      "answer_correct": true,
+      "unsupported_claims": [],
+      "citation_hits": 1,
+      "citation_total": 1,
+      "answer": "A list comprehension is a concise way to create a list from an iterable.",
+      "retrieved_sources": [
+        "https://www.python.org/about/"
+      ],
+      "cited_sources": [
+        "https://www.python.org/about/"
+      ]
+    },
+    {
+      "case_id": "unanswerable-france",
+      "retrieval_hit": null,
+      "answer_correct": true,
+      "unsupported_claims": [],
+      "citation_hits": 0,
+      "citation_total": 0,
+      "answer": "The indexed collection does not contain enough evidence to answer that question.",
+      "retrieved_sources": [],
+      "cited_sources": []
+    },
+    {
+      "case_id": "unanswerable-rust",
+      "retrieval_hit": null,
+      "answer_correct": true,
+      "unsupported_claims": [],
+      "citation_hits": 0,
+      "citation_total": 0,
+      "answer": "The indexed collection does not contain enough evidence to answer that question.",
+      "retrieved_sources": [],
+      "cited_sources": []
+    }
+  ]
+}
