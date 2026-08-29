@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -36,6 +35,10 @@ class ClaimSupportGrade(BaseModel):
     unsupported_claims: list[str] = Field(default_factory=list)
 
 
+class ClaimSupportDecision(BaseModel):
+    supported: bool
+
+
 class ClaimSupportJudge(Protocol):
     def find_unsupported_claims(
         self, answer: str, citations: tuple[Citation, ...]
@@ -47,6 +50,7 @@ class ModelClaimSupportJudge:
 
     def __init__(self, model: object) -> None:
         self._grade_model = model.with_structured_output(ClaimSupportGrade)  # type: ignore[attr-defined]
+        self._support_model = model.with_structured_output(ClaimSupportDecision)  # type: ignore[attr-defined]
 
     def find_unsupported_claims(
         self, answer: str, citations: tuple[Citation, ...]
@@ -69,7 +73,9 @@ class ModelClaimSupportJudge:
                     "fact is absent or contradicted, including names, numbers, dates, or "
                     "negation. Example: answer 'Python began in 2001' versus evidence "
                     "'Python began in 1991' is unsupported; the same year in both is "
-                    "supported. Return claim text only, without reasoning."
+                    "supported. Copy each unsupported claim exactly from the answer; do "
+                    "not paraphrase or invent claim text. Return claim text only, without "
+                    "reasoning."
                 ),
                 HumanMessage(f"Answer:\n{answer}\n\nEvidence:\n{evidence}"),
             ]
@@ -79,56 +85,36 @@ class ModelClaimSupportJudge:
         candidates = dict.fromkeys(
             claim.strip() for claim in grade.unsupported_claims if claim.strip()
         )
-        return tuple(
+        candidates = tuple(
             claim for claim in candidates if _claim_appears_in_answer(claim, answer)
         )
+        return tuple(
+            claim
+            for claim in candidates
+            if not self._claim_is_supported(claim, evidence)
+        )
 
-
-_WORD = re.compile(r"[a-z0-9]+(?:['-][a-z0-9]+)?", re.I)
-_STOP_WORDS = frozenset(
-    {
-        "a",
-        "an",
-        "and",
-        "are",
-        "as",
-        "at",
-        "be",
-        "by",
-        "for",
-        "from",
-        "in",
-        "is",
-        "it",
-        "of",
-        "on",
-        "that",
-        "the",
-        "to",
-        "was",
-        "were",
-        "with",
-    }
-)
-
-
-def _content_words(value: str) -> set[str]:
-    return {
-        word.casefold()
-        for word in _WORD.findall(value)
-        if word.casefold() not in _STOP_WORDS
-    }
-
-
-def _coverage(claim: str, context: str) -> float:
-    claim_words = _content_words(claim)
-    if not claim_words:
-        return 0.0
-    return len(claim_words.intersection(_content_words(context))) / len(claim_words)
+    def _claim_is_supported(self, claim: str, evidence: str) -> bool:
+        decision = self._support_model.invoke(
+            [
+                SystemMessage(
+                    "Decide whether the supplied evidence supports the exact claim. "
+                    "Equivalent wording and sentence order count as support. A changed "
+                    "name, number, date, or negation is not support. Use only the supplied "
+                    "evidence and return only the requested structured field."
+                ),
+                HumanMessage(f"Claim:\n{claim}\n\nEvidence:\n{evidence}"),
+            ]
+        )
+        if not isinstance(decision, ClaimSupportDecision):
+            raise ValueError("Model returned an invalid claim-support decision")
+        return decision.supported
 
 
 def _claim_appears_in_answer(claim: str, answer: str) -> bool:
-    return _coverage(claim, answer) >= 0.6
+    normalised_claim = " ".join(claim.casefold().split())
+    normalised_answer = " ".join(answer.casefold().split())
+    return normalised_claim in normalised_answer
 
 
 def run_local_evaluation(

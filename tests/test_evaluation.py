@@ -14,6 +14,7 @@ from local_rag.evaluation import (
     threshold_failures,
 )
 from local_rag.evaluation_cli import (
+    ClaimSupportDecision,
     ClaimSupportGrade,
     ModelClaimSupportJudge,
     _configured_digest,
@@ -21,6 +22,24 @@ from local_rag.evaluation_cli import (
 )
 from local_rag.evaluation_io import load_evaluation_cases, write_reports
 from local_rag.workflow import RetrievalAttempt
+
+
+def claim_judge(
+    unsupported_claims: list[str], support_decisions: list[bool]
+) -> ModelClaimSupportJudge:
+    model = MagicMock()
+    grade_model = MagicMock()
+    grade_model.invoke.return_value = ClaimSupportGrade(
+        unsupported_claims=unsupported_claims
+    )
+    support_model = MagicMock()
+    support_model.invoke.side_effect = [
+        ClaimSupportDecision(supported=value) for value in support_decisions
+    ]
+    model.with_structured_output.side_effect = lambda schema: (
+        grade_model if schema is ClaimSupportGrade else support_model
+    )
+    return ModelClaimSupportJudge(model)
 
 
 class EvaluationMetricTests(unittest.TestCase):
@@ -31,11 +50,7 @@ class EvaluationMetricTests(unittest.TestCase):
         )
 
     def test_claim_judge_detects_mixed_supported_and_unsupported_answer(self) -> None:
-        model = MagicMock()
-        model.with_structured_output.return_value.invoke.return_value = (
-            ClaimSupportGrade(unsupported_claims=["The Moon is made of cheese."])
-        )
-        judge = ModelClaimSupportJudge(model)
+        judge = claim_judge(["The Moon is made of cheese."], [False])
 
         claims = judge.find_unsupported_claims(
             "Alpha is supported. The Moon is made of cheese.",
@@ -45,16 +60,10 @@ class EvaluationMetricTests(unittest.TestCase):
         self.assertEqual(claims, ("The Moon is made of cheese.",))
 
     def test_claim_judge_discards_claims_that_are_absent_from_the_answer(self) -> None:
-        model = MagicMock()
-        model.with_structured_output.return_value.invoke.return_value = (
-            ClaimSupportGrade(
-                unsupported_claims=[
-                    "Python is named after a snake.",
-                    "The Moon is made of cheese.",
-                ]
-            )
+        judge = claim_judge(
+            ["Python is named after a snake.", "The Moon is made of cheese."],
+            [False],
         )
-        judge = ModelClaimSupportJudge(model)
 
         claims = judge.find_unsupported_claims(
             "Python is used for automation. The Moon is made of cheese.",
@@ -72,11 +81,7 @@ class EvaluationMetricTests(unittest.TestCase):
     def test_claim_judge_retains_number_contradictions_despite_lexical_overlap(
         self,
     ) -> None:
-        model = MagicMock()
-        model.with_structured_output.return_value.invoke.return_value = (
-            ClaimSupportGrade(unsupported_claims=["Python was created in 2001."])
-        )
-        judge = ModelClaimSupportJudge(model)
+        judge = claim_judge(["Python was created in 2001."], [False])
 
         claims = judge.find_unsupported_claims(
             "Python was created in 2001.",
@@ -84,6 +89,24 @@ class EvaluationMetricTests(unittest.TestCase):
         )
 
         self.assertEqual(claims, ("Python was created in 2001.",))
+
+    def test_claim_judge_discards_candidate_after_semantic_support_confirmation(
+        self,
+    ) -> None:
+        judge = claim_judge(["Python is used for automation."], [True])
+
+        claims = judge.find_unsupported_claims(
+            "Python is used for automation.",
+            (
+                Citation(
+                    "Uses",
+                    "source-one",
+                    "Automation and scripting tasks commonly use Python.",
+                ),
+            ),
+        )
+
+        self.assertEqual(claims, ())
 
     def test_live_runner_captures_retrieval_attempts_and_claim_grades(self) -> None:
         assistant = MagicMock()
