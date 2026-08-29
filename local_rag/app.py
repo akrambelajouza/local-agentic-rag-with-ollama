@@ -11,11 +11,12 @@ from langchain_core.messages import AIMessage, HumanMessage
 from local_rag.agent import build_assistant
 from local_rag.assistant import Citation, GroundedAssistant
 from local_rag.config import Settings, load_settings
-from local_rag.readiness import assess_readiness
+from local_rag.readiness import ReadinessReport, assess_readiness
 
 LOGGER = logging.getLogger(__name__)
 
 AssistantProvider = Callable[[Settings], GroundedAssistant]
+ReadinessProvider = Callable[[], ReadinessReport]
 
 
 @st.cache_resource(show_spinner=False)
@@ -25,7 +26,13 @@ def get_assistant(settings: Settings) -> GroundedAssistant:
     return build_assistant(settings)
 
 
-def render_app(*, assistant_provider: AssistantProvider | None = None) -> None:
+def render_app(
+    *,
+    assistant_provider: AssistantProvider | None = None,
+    readiness_provider: ReadinessProvider | None = None,
+    citations_expanded: bool = False,
+    chat_enabled: bool = True,
+) -> None:
     """Render the local RAG chat application."""
 
     st.set_page_config(page_title="Local RAG Chatbot", page_icon="📚")
@@ -39,7 +46,7 @@ def render_app(*, assistant_provider: AssistantProvider | None = None) -> None:
         "`What are list comprehensions used for?`"
     )
 
-    report = assess_readiness()
+    report = (readiness_provider or assess_readiness)()
     st.subheader("Environment readiness")
     if report.ready:
         st.success("Ready to answer questions locally.")
@@ -50,6 +57,8 @@ def render_app(*, assistant_provider: AssistantProvider | None = None) -> None:
         st.write(f"{icon} **{check.label}:** {check.detail}")
         if not check.ok and check.action:
             st.caption(f"Action: {check.action}")
+    if not chat_enabled:
+        st.info("This deterministic portfolio preview is read-only.")
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -73,11 +82,17 @@ def render_app(*, assistant_provider: AssistantProvider | None = None) -> None:
         elif isinstance(message, AIMessage):
             with st.chat_message("assistant"):
                 st.markdown(message.content)
-                _render_citations(_message_citations(message))
+                _render_citations(
+                    _message_citations(message), expanded=citations_expanded
+                )
 
     submitted_question = st.chat_input(
         "Ask about the indexed documents",
-        disabled=not report.ready or st.session_state.pending_question is not None,
+        disabled=(
+            not chat_enabled
+            or not report.ready
+            or st.session_state.pending_question is not None
+        ),
     )
     if submitted_question and st.session_state.pending_question is None:
         st.session_state.pending_question = submitted_question
@@ -125,7 +140,7 @@ def render_app(*, assistant_provider: AssistantProvider | None = None) -> None:
 
     with st.chat_message("assistant"):
         st.markdown(answer.text)
-        _render_citations(answer.citations)
+        _render_citations(answer.citations, expanded=citations_expanded)
     st.session_state.messages.append(HumanMessage(user_question))
     st.session_state.messages.append(
         AIMessage(
@@ -150,12 +165,14 @@ def _show_failure(question: str, message: str, guidance: str) -> None:
     st.session_state.messages.append(AIMessage(message))
 
 
-def _render_citations(citations: tuple[Citation, ...]) -> None:
+def _render_citations(
+    citations: tuple[Citation, ...], *, expanded: bool = False
+) -> None:
     if not citations:
         return
     st.markdown("**Sources**")
     for citation in citations:
-        with st.expander(citation.title):
+        with st.expander(citation.title, expanded=expanded):
             st.markdown(f"[{citation.url}]({citation.url})")
             if citation.excerpt:
                 st.caption(citation.excerpt)
