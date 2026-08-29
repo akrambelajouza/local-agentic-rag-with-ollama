@@ -1,7 +1,7 @@
 # Local Agentic RAG with Ollama
 
 [![Quality](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/actions/workflows/quality.yml/badge.svg)](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/actions/workflows/quality.yml)
-[![Release candidate: v1.0.0](https://img.shields.io/badge/release%20candidate-v1.0.0-2ea44f.svg)](docs/release-validation.md)
+[![Release: v1.0.0](https://img.shields.io/badge/release-v1.0.0-2ea44f.svg)](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/releases/tag/v1.0.0)
 [![Python 3.11–3.12](https://img.shields.io/badge/python-3.11%E2%80%933.12-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -133,7 +133,7 @@ retrieval hit rate, answer correctness, and annotated-source coverage, with zero
 unsupported claims. Those numbers validate evaluator wiring against known observations;
 they are not presented as model-quality results.
 
-The release-candidate [live v1.0.0 summary](evaluation/results/v1.0.0.md) and
+The release [live v1.0.0 summary](evaluation/results/v1.0.0.md) and
 [machine report](evaluation/results/v1.0.0.json) record a real Windows CPU run with
 `llama3.2:3b` and `mxbai-embed-large`: all six cases passed, including the two
 out-of-corpus decline cases. See the [release validation record](docs/release-validation.md)
@@ -239,9 +239,8 @@ Released under the [MIT License](LICENSE).
 
 ## Release
 
-This branch is the validated `v1.0.0` release candidate. After it merges, the
-[v1.0.0 release link](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/releases/tag/v1.0.0)
-will resolve when the merge commit is tagged and the GitHub release is published.
-The exact publication sequence is recorded in the
-[release validation record](docs/release-validation.md); see the
+The portfolio-ready
+[v1.0.0 release](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/releases/tag/v1.0.0)
+is published from the validated merge commit. Its evidence and publication sequence
+are recorded in the [release validation record](docs/release-validation.md); see the
 [changelog](CHANGELOG.md) for the concise feature summary.
