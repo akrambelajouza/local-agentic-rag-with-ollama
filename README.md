@@ -1,6 +1,7 @@
 # Local Agentic RAG with Ollama
 
 [![Quality](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/actions/workflows/quality.yml/badge.svg)](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/actions/workflows/quality.yml)
+[![Release: v1.0.0](https://img.shields.io/badge/release-v1.0.0-2ea44f.svg)](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/releases/tag/v1.0.0)
 [![Python 3.11–3.12](https://img.shields.io/badge/python-3.11%E2%80%933.12-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -58,12 +59,15 @@ flowchart TD
     Rewrite --> R2[Retrieve once more]
     R2 --> Judge2{Evidence sufficient?}
     Judge2 -->|yes| Generate
+    Judge2 -->|inconclusive + strong relevance| Generate
     Judge2 -->|no| Decline[Return an evidence-safe decline]
     Generate --> Verify[Render citations from stored metadata]
 ```
 
-The retry is deliberately bounded to one rewrite. The UI reports workflow events
-without exposing hidden model reasoning, and citation URLs come from retrieval
+The retry is deliberately bounded to one rewrite. After that retry, evidence above
+the configured strong-relevance threshold can recover a small model's false-negative
+judgment; weaker evidence still produces a safe decline. The UI reports workflow
+events without exposing hidden model reasoning, and citation URLs come from retrieval
 metadata rather than model-generated text.
 
 ## Quick start
@@ -117,7 +121,7 @@ repeatable:
 
 - `Who created Python?` → answer includes Guido van Rossum and a python.org source.
 - `Why is the language called Python?` → answer cites the Monty Python origin.
-- `Name three common uses for Python.` → answer covers web, data science, and automation.
+- `How is Python used for web development, data science, and automation?` → answer covers all three areas.
 - `What is the capital of France?` → the assistant declines because the corpus lacks evidence.
 
 Run the offline evaluator reference fixture (no Ollama required):
@@ -130,6 +134,12 @@ The committed [reference summary](evaluation/results/reference.md) reports 100% 
 retrieval hit rate, answer correctness, and citation accuracy, with zero unsupported
 claims. Those numbers validate evaluator wiring against known observations; they are
 not presented as model-quality results.
+
+The release-candidate [live v1.0.0 summary](evaluation/results/v1.0.0.md) and
+[machine report](evaluation/results/v1.0.0.json) record a real Windows CPU run with
+`llama3.2:3b` and `mxbai-embed-large`: all six cases passed, including the two
+out-of-corpus decline cases. See the [release validation record](docs/release-validation.md)
+for the clean-install procedure and platform scope.
 
 After indexing the corpus, run the real local models and write a timestamped report:
 
@@ -149,6 +159,7 @@ comparison.
 | Ollama | Private, offline-capable inference | Local model quality and speed depend on hardware |
 | Chroma | Simple persistent vector search | A single-host store is not a distributed production database |
 | Structured sufficiency judge | Makes retry/decline behavior testable | Adds a model call before generation |
+| Strong-evidence fallback | Recovers false-negative judgments from small models | Requires corpus-specific threshold calibration |
 | One retry maximum | Prevents loops, latency spikes, and hidden cost | A second rewrite strategy may sometimes recover more answers |
 | Metadata-derived citations | Prevents invented source URLs | Correctness still depends on retrieval and chunk quality |
 | Atomic full rebuild | Keeps the last valid index on failure | Requires temporary disk space during ingestion |
@@ -227,3 +238,9 @@ launchers; new usage should prefer the package commands documented above.
 ## License
 
 Released under the [MIT License](LICENSE).
+
+## Release
+
+The portfolio-ready [v1.0.0 release](https://github.com/akrambelajouza/local-agentic-rag-with-ollama/releases/tag/v1.0.0)
+is backed by the [release validation record](docs/release-validation.md). See the
+[changelog](CHANGELOG.md) for its concise feature summary.

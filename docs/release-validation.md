@@ -1,0 +1,96 @@
+# v1.0.0 release validation
+
+This record separates observed release evidence from documentation claims. It is
+completed from a fresh GitHub clone and the configured local Ollama stack before
+the `v1.0.0` tag is published.
+
+## Platform coverage
+
+- **Windows / Python 3.12:** local fresh-clone runtime install, readiness, ingestion,
+  grounded-answer smoke, live Ollama test, evaluation, and complete quality gate.
+- **Ubuntu / Python 3.11 and 3.12:** clean GitHub Actions checkout, pinned dependency
+  install, formatting, linting, unit/UI tests, coverage, and dependency validation.
+- **Windows / Python 3.11:** the same clean GitHub Actions quality workflow.
+- **macOS:** commands are documented but were not executed for this release.
+
+## Commands and observed results
+
+Validation date: **2026-08-29**.
+
+### Fresh clone and default quality gate
+
+Tested from default-branch commit `637698f2b95f4c9e730cddf38064ed5bbe006009`
+on Windows NT 10.0.26200 with Python 3.12.6:
+
+```powershell
+git clone --depth 1 https://github.com/akrambelajouza/local-agentic-rag-with-ollama.git
+python -m venv venv
+.\venv\Scripts\python.exe -m pip install -r requirements.lock
+Copy-Item .env.example .env
+.\venv\Scripts\python.exe -m local_rag.readiness
+.\venv\Scripts\python.exe -m pip install -r requirements-dev.lock
+.\venv\Scripts\python.exe scripts\quality.py
+```
+
+Observed results:
+
+- Pinned runtime installation and import smoke: **PASS**.
+- Pre-Ollama readiness: configuration and dataset passed; Ollama, models, and the
+  not-yet-created collection failed with the documented corrective actions.
+- Formatting and linting: **PASS**.
+- Tests: **62 passed, 1 live test skipped by default**.
+- Branch coverage: **86%** (required floor: 85%).
+- Dependency consistency: **PASS**.
+
+### Live local stack
+
+The official Windows installer for Ollama `0.33.2` was verified before execution:
+
+- Authenticode status: **Valid**, signer: **Ollama Inc.**
+- Installer SHA-256: `5a91c1cf92480e28a84cd99e437219be719df5a50d5fa0fd5fe5b5c4a122f506`
+- Published SHA-256: exact match
+
+The configured models were pulled before ingestion:
+
+- `mxbai-embed-large:latest` (`468836162de7`, 669 MB)
+- `llama3.2:3b` (`a80c4f17acd5`, 2.0 GB)
+
+Readiness then passed configuration, dataset, Ollama, and model checks while correctly
+reporting that the fresh clone had no vector collection. The first ingestion attempt
+exposed an incompatible CUDA kernel on this host; the atomic rebuild failed without
+publishing a partial index. Ollama was restarted with `OLLAMA_LLM_LIBRARY=cpu` and
+`OLLAMA_NO_CLOUD=1`, after which ingestion completed:
+
+- Documents: **21**
+- Chunks: **21**
+- Failures: **0**
+- Duration: **28.94s**
+
+Post-ingestion readiness passed all five checks and reported 21 chunks. The opt-in
+live test answered `Who created Python?`, returned a stored python.org citation, and
+passed in **13.16s** with warm CPU models.
+
+The release candidate fixed defects discovered by the first live evaluation: a small
+model could reject directly matching evidence, the citation metric treated unlabelled
+but valid sources as incorrect, and truncated excerpts could hide support from the
+claim grader. Regression tests cover all three boundaries. The final real-model run is
+committed as a [human summary](../evaluation/results/v1.0.0.md) and
+[machine report](../evaluation/results/v1.0.0.json):
+
+- Status: **PASS**
+- Retrieval hit rate: **100%**
+- Answer correctness: **100%**
+- Unsupported claims: **0**
+- Annotated-source citation coverage: **100%**
+- Cases: **6** (four answerable and two out-of-corpus decline cases)
+- Duration: **281.95s** on the CPU backend
+
+### Final release-candidate quality gate
+
+- Formatting and linting: **PASS**
+- Tests: **68 passed, 1 live test skipped by default**
+- Branch coverage: **86%** (required floor: 85%)
+- Dependency consistency: **PASS**
+
+GitHub Actions repeats this gate on Windows and Ubuntu with Python 3.11 and 3.12.
+macOS remains explicitly unverified for v1.0.0.

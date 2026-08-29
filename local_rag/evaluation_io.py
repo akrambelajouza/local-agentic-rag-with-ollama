@@ -82,6 +82,10 @@ def write_reports(
         "thresholds": asdict(effective_thresholds),
         "metric_definition": {
             "retrieval_hit_rate": "Expected source retrieved in any workflow attempt.",
+            "citation_accuracy": (
+                "Share of annotated expected sources present in answer citations; "
+                "additional retrieved citations are not labelled as incorrect."
+            ),
             "unsupported_claims": (
                 "Claim-level judgments against cited excerpts; uncited non-declined "
                 "answers count as unsupported."

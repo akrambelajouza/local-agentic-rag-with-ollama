@@ -37,6 +37,34 @@ class EvaluationMetricTests(unittest.TestCase):
 
         self.assertEqual(claims, ("The Moon is made of cheese.",))
 
+    def test_claim_judge_discards_claims_absent_from_answer_or_present_in_evidence(
+        self,
+    ) -> None:
+        model = MagicMock()
+        model.with_structured_output.return_value.invoke.return_value = (
+            ClaimSupportGrade(
+                unsupported_claims=[
+                    "Python is named after a snake.",
+                    "Python is used for automation.",
+                    "The Moon is made of cheese.",
+                ]
+            )
+        )
+        judge = ModelClaimSupportJudge(model)
+
+        claims = judge.find_unsupported_claims(
+            "Python is used for automation. The Moon is made of cheese.",
+            (
+                Citation(
+                    "Uses",
+                    "source-one",
+                    "Python is popular for automation and scripting tasks.",
+                ),
+            ),
+        )
+
+        self.assertEqual(claims, ("The Moon is made of cheese.",))
+
     def test_live_runner_captures_retrieval_attempts_and_claim_grades(self) -> None:
         assistant = MagicMock()
         attempt = RetrievalAttempt("Question one", ("source-one",))
@@ -111,6 +139,24 @@ class EvaluationMetricTests(unittest.TestCase):
         self.assertEqual(metrics.retrieval_hit_rate, 1.0)
         self.assertTrue(scores[0].retrieval_hit)
         self.assertFalse(scores[0].answer_correct)
+
+    def test_citation_accuracy_measures_annotated_source_coverage(self) -> None:
+        case = self.cases[0]
+        observation = EvaluationObservation(
+            case.case_id,
+            "Alpha is supported.",
+            (
+                Citation("Expected", "source-one", "Alpha is supported."),
+                Citation("Additional", "another-valid-source", "More context."),
+            ),
+            (RetrievalAttempt(case.question, ("source-one",)),),
+        )
+
+        metrics, scores = calculate_metrics((case,), (observation,))
+
+        self.assertEqual(metrics.citation_accuracy, 1.0)
+        self.assertEqual(scores[0].citation_hits, 1)
+        self.assertEqual(scores[0].citation_total, 1)
 
     def test_counts_unsupported_claim_inside_an_otherwise_cited_answer(self) -> None:
         case = self.cases[0]

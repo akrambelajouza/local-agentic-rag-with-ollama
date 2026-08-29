@@ -165,7 +165,8 @@ def calculate_metrics(
         unsupported_claims = observation.unsupported_claims
         if not declined and not cited_sources and not unsupported_claims:
             unsupported_claims = (observation.answer,)
-        citation_hits = sum(source in expected_sources for source in cited_sources)
+        citation_hits = len(expected_sources.intersection(cited_sources))
+        citation_total = len(expected_sources) if case.answerable else 0
         scores.append(
             CaseScore(
                 case.case_id,
@@ -173,7 +174,7 @@ def calculate_metrics(
                 answer_correct,
                 unsupported_claims,
                 citation_hits,
-                len(cited_sources),
+                citation_total,
                 observation.answer,
                 retrieved_sources,
                 cited_sources,

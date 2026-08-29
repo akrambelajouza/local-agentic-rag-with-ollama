@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -66,11 +67,66 @@ class ModelClaimSupportJudge:
         )
         if not isinstance(grade, ClaimSupportGrade):
             raise ValueError("Model returned an invalid claim-support grade")
-        return tuple(
-            dict.fromkeys(
-                claim.strip() for claim in grade.unsupported_claims if claim.strip()
-            )
+        candidates = dict.fromkeys(
+            claim.strip() for claim in grade.unsupported_claims if claim.strip()
         )
+        return tuple(
+            claim
+            for claim in candidates
+            if _claim_appears_in_answer(claim, answer)
+            and not _claim_has_lexical_support(claim, evidence)
+        )
+
+
+_WORD = re.compile(r"[a-z0-9]+(?:['-][a-z0-9]+)?", re.I)
+_STOP_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "in",
+        "is",
+        "it",
+        "of",
+        "on",
+        "that",
+        "the",
+        "to",
+        "was",
+        "were",
+        "with",
+    }
+)
+
+
+def _content_words(value: str) -> set[str]:
+    return {
+        word.casefold()
+        for word in _WORD.findall(value)
+        if word.casefold() not in _STOP_WORDS
+    }
+
+
+def _coverage(claim: str, context: str) -> float:
+    claim_words = _content_words(claim)
+    if not claim_words:
+        return 0.0
+    return len(claim_words.intersection(_content_words(context))) / len(claim_words)
+
+
+def _claim_appears_in_answer(claim: str, answer: str) -> bool:
+    return _coverage(claim, answer) >= 0.6
+
+
+def _claim_has_lexical_support(claim: str, evidence: str) -> bool:
+    return _coverage(claim, evidence) >= 0.6
 
 
 def run_local_evaluation(

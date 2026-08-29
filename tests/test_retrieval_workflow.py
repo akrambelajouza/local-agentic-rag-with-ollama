@@ -40,8 +40,8 @@ class StubJudge:
         return decision
 
 
-def evidence(label: str) -> tuple[Evidence, ...]:
-    return (Evidence(label, f"https://source.test/{label}", label, 0.9),)
+def evidence(label: str, relevance: float = 0.9) -> tuple[Evidence, ...]:
+    return (Evidence(label, f"https://source.test/{label}", label, relevance),)
 
 
 class AgenticRetrievalWorkflowTests(unittest.TestCase):
@@ -94,7 +94,7 @@ class AgenticRetrievalWorkflowTests(unittest.TestCase):
         self.assertIn("Retrying retrieval", result.events[0].message)
 
     def test_failed_rewrite_stops_honestly_without_second_retrieval(self) -> None:
-        retriever = StubRetriever([evidence("weak")])
+        retriever = StubRetriever([evidence("weak", 0.4)])
         judge = StubJudge([SufficiencyDecision(sufficient=False, rewritten_query="  ")])
 
         result = AgenticRetrievalWorkflow(retriever, judge).run("Question")
@@ -103,8 +103,21 @@ class AgenticRetrievalWorkflowTests(unittest.TestCase):
         self.assertEqual(retriever.queries, ["Question"])
         self.assertIn("could not produce a safe rewrite", result.events[-1].message)
 
+    def test_strong_evidence_recovers_when_judge_cannot_rewrite(self) -> None:
+        strong = evidence("direct-answer", 0.8)
+        retriever = StubRetriever([strong])
+        judge = StubJudge([SufficiencyDecision(sufficient=False, rewritten_query=None)])
+
+        result = AgenticRetrievalWorkflow(
+            retriever, judge, strong_evidence_threshold=0.6
+        ).run("Question")
+
+        self.assertTrue(result.sufficient)
+        self.assertEqual(result.evidence, strong)
+        self.assertIn("strong relevance", result.events[-1].message)
+
     def test_retry_limit_stops_after_two_retrieval_attempts(self) -> None:
-        retriever = StubRetriever([evidence("weak"), evidence("still-weak")])
+        retriever = StubRetriever([evidence("weak", 0.4), evidence("still-weak", 0.45)])
         judge = StubJudge(
             [
                 SufficiencyDecision(sufficient=False, rewritten_query="retry"),
@@ -117,6 +130,33 @@ class AgenticRetrievalWorkflowTests(unittest.TestCase):
         self.assertFalse(result.sufficient)
         self.assertEqual(retriever.queries, ["Question", "retry"])
         self.assertIn("retry limit", result.events[-1].message)
+
+    def test_strong_final_evidence_recovers_from_a_false_negative_judgment(
+        self,
+    ) -> None:
+        strong = (
+            Evidence(
+                "The answer is stated directly.",
+                "https://source.test/strong",
+                "Strong source",
+                0.8,
+            ),
+        )
+        retriever = StubRetriever([evidence("weak"), strong])
+        judge = StubJudge(
+            [
+                SufficiencyDecision(sufficient=False, rewritten_query="retry"),
+                SufficiencyDecision(sufficient=False),
+            ]
+        )
+
+        result = AgenticRetrievalWorkflow(
+            retriever, judge, strong_evidence_threshold=0.6
+        ).run("Question")
+
+        self.assertTrue(result.sufficient)
+        self.assertEqual(result.evidence, strong)
+        self.assertIn("strong relevance", result.events[-1].message)
 
     def test_malformed_decision_stops_without_leaking_an_exception(self) -> None:
         retriever = StubRetriever([evidence("weak")])
