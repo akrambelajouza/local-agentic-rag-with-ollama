@@ -62,8 +62,14 @@ class ModelClaimSupportJudge:
         grade = self._grade_model.invoke(
             [
                 SystemMessage(
-                    "Identify each factual claim in the answer that is not supported "
-                    "by the supplied evidence. Return claim text only, without reasoning."
+                    "Audit the answer against the supplied evidence. Return an empty list "
+                    "when every claim is supported, and never list a supported claim. A "
+                    "claim is supported when the evidence states the same fact even with "
+                    "different wording or sentence order. List a claim only when a material "
+                    "fact is absent or contradicted, including names, numbers, dates, or "
+                    "negation. Example: answer 'Python began in 2001' versus evidence "
+                    "'Python began in 1991' is unsupported; the same year in both is "
+                    "supported. Return claim text only, without reasoning."
                 ),
                 HumanMessage(f"Answer:\n{answer}\n\nEvidence:\n{evidence}"),
             ]
