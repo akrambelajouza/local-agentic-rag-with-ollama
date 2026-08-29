@@ -129,9 +129,9 @@ python -m local_rag.reference_evaluation
 ```
 
 The committed [reference summary](evaluation/results/reference.md) reports 100% for
-retrieval hit rate, answer correctness, and annotated-source coverage, with zero unsupported
-claims. Those numbers validate evaluator wiring against known observations; they are
-not presented as model-quality results.
+retrieval hit rate, answer correctness, and annotated-source coverage, with zero
+unsupported claims. Those numbers validate evaluator wiring against known observations;
+they are not presented as model-quality results.
 
 The release-candidate [live v1.0.0 summary](evaluation/results/v1.0.0.md) and
 [machine report](evaluation/results/v1.0.0.json) record a real Windows CPU run with
@@ -146,9 +146,9 @@ python -m local_rag.evaluation_cli --output evaluation/results/latest.json
 ```
 
 Default thresholds are 75% retrieval hit rate, 75% answer correctness, 0%
-unsupported-claim cases, and 75% annotated-source coverage. The command returns a failing
-exit status when a threshold is missed and records model/configuration hashes for
-comparison.
+unsupported-claim cases, and 75% annotated-source coverage. The command returns a
+failing exit status when a threshold is missed and records source revision, Ollama/model
+digests, and non-secret runtime configuration for comparison.
 
 ## Engineering choices and tradeoffs
 
@@ -157,8 +157,8 @@ comparison.
 | Ollama | Private, offline-capable inference | Local model quality and speed depend on hardware |
 | Chroma | Simple persistent vector search | A single-host store is not a distributed production database |
 | Structured sufficiency judge | Makes retry/decline behavior testable | Adds a model call before generation |
-| Strong-evidence fallback | Recovers false-negative judgments from small models | Requires corpus-specific threshold calibration |
 | One retry maximum | Prevents loops, latency spikes, and hidden cost | A second rewrite strategy may sometimes recover more answers |
+| Two-stage claim grading | Confirms proposed unsupported claims semantically | Adds local inference latency during evaluation |
 | Metadata-derived citations | Prevents invented source URLs | Correctness still depends on retrieval and chunk quality |
 | Atomic full rebuild | Keeps the last valid index on failure | Requires temporary disk space during ingestion |
 

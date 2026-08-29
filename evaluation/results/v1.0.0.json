@@ -1,31 +1,38 @@
 {
   "metadata": {
+    "source_revision": "cc7b5cab81a1867432af6f1fb99ccb58df1eaf91",
+    "ollama_version": "0.33.2",
     "chat_model": "llama3.2:3b",
+    "chat_model_digest": "a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72",
     "embedding_model": "mxbai-embed-large",
+    "embedding_model_digest": "468836162de7f81e041c43663fedbbba921dcea9b9fefea135685a39b2d83dd8",
     "chunk_size": 1000,
     "chunk_overlap": 200,
+    "retrieval_limit": 4,
+    "relevance_threshold": 0.25,
+    "max_generation_tokens": 512,
     "dataset_sha256": "5c161ce9584de37521d1f5be78e5f5b440567dcb7f86e27b56f3536d3b098fe8",
     "evaluation_set_sha256": "8b57da14e62874c1cd5d70bf9a67008c66717be39069b3bdeb05bfea15e0faae",
-    "duration_seconds": 281.9529421999996,
-    "run_at": "2026-08-29T09:28:36.088223+00:00"
+    "duration_seconds": 316.5706639,
+    "run_at": "2026-08-29T17:48:26.092369+00:00"
   },
   "metrics": {
     "retrieval_hit_rate": 1.0,
     "answer_correctness": 1.0,
     "unsupported_claims": 0,
     "unsupported_claim_rate": 0.0,
-    "citation_accuracy": 1.0,
+    "annotated_source_coverage": 1.0,
     "case_count": 6
   },
   "thresholds": {
     "min_retrieval_hit_rate": 0.75,
     "min_answer_correctness": 0.75,
     "max_unsupported_claim_rate": 0.0,
-    "min_citation_accuracy": 0.75
+    "min_annotated_source_coverage": 0.75
   },
   "metric_definition": {
     "retrieval_hit_rate": "Expected source retrieved in any workflow attempt.",
-    "citation_accuracy": "Share of annotated expected sources present in answer citations; additional retrieved citations are not labelled as incorrect.",
+    "annotated_source_coverage": "Share of annotated expected sources present in answer citations; additional retrieved citations are not labelled as incorrect.",
     "unsupported_claims": "Claim-level judgments against cited excerpts; uncited non-declined answers count as unsupported."
   },
   "threshold_failures": [],
@@ -63,16 +70,12 @@
         "https://www.python.org/about/",
         "https://www.python.org/about/history/",
         "https://www.python.org/about/",
-        "https://www.python.org/about/",
-        "https://www.python.org/about/",
-        "https://www.python.org/about/history/",
-        "https://www.python.org/about/help/",
         "https://www.python.org/about/"
       ],
       "cited_sources": [
         "https://www.python.org/about/",
         "https://www.python.org/about/history/",
-        "https://www.python.org/about/help/",
+        "https://www.python.org/about/",
         "https://www.python.org/about/"
       ]
     },
@@ -85,10 +88,6 @@
       "citation_total": 1,
       "answer": "Python is used for web development through frameworks like Django and Flask, which enable building scalable web applications. For data science and analytics, Python libraries like NumPy, Pandas, and Matplotlib are used for data manipulation and visualization. Additionally, Python is used with libraries such as TensorFlow, PyTorch, and scikit-learn for machine learning and artificial intelligence. For automation, Python is popular for scripting tasks, making it valuable for system administration and DevOps.",
       "retrieved_sources": [
-        "https://www.python.org/about/apps/",
-        "https://www.python.org/about/",
-        "https://www.python.org/about/",
-        "https://www.python.org/about/",
         "https://www.python.org/about/apps/",
         "https://www.python.org/about/",
         "https://www.python.org/about/",
@@ -110,6 +109,10 @@
       "citation_total": 1,
       "answer": "A Python list comprehension is a concise way to create lists in Python. It combines a for loop and optional conditional logic into a single expression. For example, [x**2 for x in range(10) if x % 2 == 0] creates a list of squares of even numbers.",
       "retrieved_sources": [
+        "https://www.python.org/about/",
+        "https://www.python.org/about/",
+        "https://www.python.org/about/",
+        "https://www.python.org/about/",
         "https://www.python.org/about/",
         "https://www.python.org/about/",
         "https://www.python.org/about/",
@@ -145,7 +148,9 @@
         "https://www.python.org/about/history/",
         "https://www.python.org/about/help/",
         "https://www.python.org/about/",
-        "https://www.python.org/about/"
+        "https://www.python.org/about/",
+        "https://www.python.org/about/history/",
+        "https://www.python.org/about/help/"
       ],
       "cited_sources": []
     }

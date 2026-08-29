@@ -71,11 +71,14 @@ Post-ingestion readiness passed all five checks and reported 21 chunks. The opt-
 live test answered `Who created Python?`, returned a stored python.org citation, and
 passed in **13.16s** with warm CPU models.
 
-The release candidate fixed defects discovered by the first live evaluation: a small
-model could reject directly matching evidence, the citation metric treated unlabelled
-but valid sources as incorrect, and truncated excerpts could hide support from the
-claim grader. Regression tests cover all three boundaries. The final real-model run is
-committed as a [human summary](../evaluation/results/v1.0.0.md) and
+The release candidate fixed defects discovered by the first live evaluation without
+allowing similarity to override a semantic insufficiency decision. The judge now sees
+the two strongest excerpts and can perform one genuine rewrite; the positive-label
+citation metric is honestly named annotated-source coverage; and proposed unsupported
+claims must be copied from the answer and independently confirmed by a second semantic
+decision. Number-contradiction and near-match decline regressions cover the safety
+boundaries. The final real-model run is committed as a
+[human summary](../evaluation/results/v1.0.0.md) and
 [machine report](../evaluation/results/v1.0.0.json):
 
 - Status: **PASS**
@@ -84,12 +87,15 @@ committed as a [human summary](../evaluation/results/v1.0.0.md) and
 - Unsupported claims: **0**
 - Annotated-source coverage: **100%**
 - Cases: **6** (four answerable and two out-of-corpus decline cases)
-- Duration: **281.95s** on the CPU backend
+- Duration: **316.57s** on the CPU backend
+- Evaluated source revision: `cc7b5cab81a1867432af6f1fb99ccb58df1eaf91`
+- Runtime provenance: Ollama `0.33.2`, both full model digests, retrieval limit `4`,
+  relevance threshold `0.25`, and generation bound `512` in the machine report
 
 ### Final release-candidate quality gate
 
 - Formatting and linting: **PASS**
-- Tests: **68 passed, 1 live test skipped by default**
+- Tests: **74 passed, 1 live test skipped by default**
 - Branch coverage: **86%** (required floor: 85%)
 - Dependency consistency: **PASS**
 

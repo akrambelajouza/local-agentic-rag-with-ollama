@@ -27,6 +27,14 @@ class ReleaseMetadataTests(unittest.TestCase):
         self.assertEqual(live_report["threshold_failures"], [])
         self.assertEqual(live_report["metrics"]["answer_correctness"], 1.0)
         self.assertEqual(live_report["metrics"]["unsupported_claims"], 0)
+        metadata = live_report["metadata"]
+        self.assertEqual(len(metadata["source_revision"]), 40)
+        self.assertEqual(metadata["ollama_version"], "0.33.2")
+        self.assertEqual(len(metadata["chat_model_digest"]), 64)
+        self.assertEqual(len(metadata["embedding_model_digest"]), 64)
+        self.assertEqual(metadata["retrieval_limit"], 4)
+        self.assertEqual(metadata["relevance_threshold"], 0.25)
+        self.assertEqual(metadata["max_generation_tokens"], 512)
         self.assertIn("evaluation/results/v1.0.0.md", readme)
 
 

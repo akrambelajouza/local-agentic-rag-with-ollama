@@ -1,8 +1,9 @@
 import json
 import unittest
+from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from local_rag.assistant import UNSUPPORTED_ANSWER, Citation, GroundedAnswer
 from local_rag.evaluation import (
@@ -18,6 +19,8 @@ from local_rag.evaluation_cli import (
     ClaimSupportGrade,
     ModelClaimSupportJudge,
     _configured_digest,
+    _ollama_provenance,
+    _source_revision,
     run_local_evaluation,
 )
 from local_rag.evaluation_io import load_evaluation_cases, write_reports
@@ -43,11 +46,54 @@ def claim_judge(
 
 
 class EvaluationMetricTests(unittest.TestCase):
+    @patch("local_rag.evaluation_cli.subprocess.run")
+    def test_source_revision_reads_git_head(self, run: MagicMock) -> None:
+        run.return_value = MagicMock(returncode=0, stdout="a" * 40 + "\n")
+
+        self.assertEqual(_source_revision(), "a" * 40)
+
+    @patch("local_rag.evaluation_cli.urlopen")
+    def test_ollama_provenance_reads_version_and_model_digests(
+        self, open_url: MagicMock
+    ) -> None:
+        open_url.side_effect = (
+            BytesIO(b'{"version":"0.33.2"}'),
+            BytesIO(b'{"models":[{"name":"chat:latest","digest":"chat-sha"}]}'),
+        )
+
+        version, digests = _ollama_provenance("http://localhost:11434/")
+
+        self.assertEqual(version, "0.33.2")
+        self.assertEqual(digests, {"chat:latest": "chat-sha"})
+
     def test_model_digest_matches_implicit_latest_tag(self) -> None:
         self.assertEqual(
             _configured_digest({"embed:latest": "sha256-value"}, "embed"),
             "sha256-value",
         )
+
+    def test_model_digest_fails_when_configured_model_is_absent(self) -> None:
+        with self.assertRaisesRegex(ValueError, "did not report a digest"):
+            _configured_digest({"other:latest": "sha"}, "configured")
+
+    def test_claim_judge_rejects_invalid_support_confirmation(self) -> None:
+        model = MagicMock()
+        grade_model = MagicMock()
+        grade_model.invoke.return_value = ClaimSupportGrade(
+            unsupported_claims=["Unsupported claim."]
+        )
+        support_model = MagicMock()
+        support_model.invoke.return_value = {"supported": False}
+        model.with_structured_output.side_effect = lambda schema: (
+            grade_model if schema is ClaimSupportGrade else support_model
+        )
+        judge = ModelClaimSupportJudge(model)
+
+        with self.assertRaisesRegex(ValueError, "invalid claim-support decision"):
+            judge.find_unsupported_claims(
+                "Unsupported claim.",
+                (Citation("One", "source-one", "Different evidence."),),
+            )
 
     def test_claim_judge_detects_mixed_supported_and_unsupported_answer(self) -> None:
         judge = claim_judge(["The Moon is made of cheese."], [False])
