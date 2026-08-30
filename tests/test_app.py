@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 from langchain_core.messages import AIMessage
 from streamlit.testing.v1 import AppTest
@@ -8,6 +8,7 @@ from streamlit.testing.v1 import AppTest
 from local_rag.app import get_assistant, render_app
 from local_rag.assistant import Citation, GroundedAnswer
 from local_rag.config import Settings
+from local_rag.pdf_ingestion import PdfIngestionError
 from local_rag.workflow import WorkflowEvent
 
 
@@ -77,6 +78,42 @@ class StreamlitStartupTests(unittest.TestCase):
 
     @patch("local_rag.app.assess_readiness")
     @patch("local_rag.app.st")
+    def test_uploaded_pdf_citation_shows_filename_and_page_without_a_broken_link(
+        self, streamlit: MagicMock, assess_readiness: MagicMock
+    ) -> None:
+        assess_readiness.return_value = MagicMock(ready=True, checks=[])
+        streamlit.session_state.__contains__.return_value = True
+        streamlit.button.return_value = False
+        streamlit.form_submit_button.return_value = False
+        streamlit.session_state.pending_question = None
+        streamlit.session_state.messages = [
+            AIMessage(
+                "Answer from the handbook.",
+                additional_kwargs={
+                    "citations": [
+                        {
+                            "title": "handbook.pdf (page 2)",
+                            "url": "local-pdf://abc123/handbook.pdf#page=2",
+                            "excerpt": "Grounded handbook text.",
+                        }
+                    ]
+                },
+            )
+        ]
+        streamlit.chat_input.return_value = None
+
+        render_app(citations_expanded=True)
+
+        streamlit.caption.assert_any_call("Local PDF: handbook.pdf · page 2")
+        rendered_markdown = [call.args[0] for call in streamlit.markdown.call_args_list]
+        self.assertNotIn(
+            "[local-pdf://abc123/handbook.pdf#page=2]"
+            "(local-pdf://abc123/handbook.pdf#page=2)",
+            rendered_markdown,
+        )
+
+    @patch("local_rag.app.assess_readiness")
+    @patch("local_rag.app.st")
     def test_user_can_clear_the_conversation(
         self, streamlit: MagicMock, assess_readiness: MagicMock
     ) -> None:
@@ -90,6 +127,150 @@ class StreamlitStartupTests(unittest.TestCase):
 
         self.assertEqual(streamlit.session_state.messages, [])
         streamlit.rerun.assert_called_once_with()
+
+    @patch("local_rag.app.assess_readiness")
+    @patch("local_rag.app.st")
+    def test_user_can_upload_and_ingest_pdf_documents(
+        self, streamlit: MagicMock, assess_readiness: MagicMock
+    ) -> None:
+        assess_readiness.return_value = MagicMock(ready=True, checks=[])
+        streamlit.session_state.__contains__.return_value = True
+        streamlit.session_state.messages = [AIMessage("Old answer")]
+        streamlit.session_state.pending_question = None
+        streamlit.button.return_value = False
+        streamlit.chat_input.return_value = None
+        streamlit.form_submit_button.return_value = True
+        uploaded = MagicMock()
+        uploaded.name = "handbook.pdf"
+        uploaded.getvalue.return_value = b"%PDF-content"
+        streamlit.file_uploader.return_value = [uploaded]
+        summary = MagicMock(
+            uploaded_file_count=1,
+            extracted_page_count=3,
+            added_document_count=3,
+            skipped_duplicate_count=0,
+        )
+        ingestion_provider = MagicMock(return_value=summary)
+
+        render_app(pdf_ingestion_provider=ingestion_provider)
+
+        settings, uploads = ingestion_provider.call_args.args
+        self.assertIsInstance(settings, Settings)
+        self.assertEqual(
+            [(upload.filename, upload.content) for upload in uploads],
+            [("handbook.pdf", b"%PDF-content")],
+        )
+        expected_notice = (
+            "success",
+            "Ingested 1 PDF with 3 text pages and rebuilt the local index.",
+        )
+        self.assertEqual(streamlit.session_state.pdf_ingestion_notice, expected_notice)
+        self.assertNotIn(call(expected_notice[1]), streamlit.success.call_args_list)
+        self.assertEqual(streamlit.session_state.messages, [])
+        streamlit.rerun.assert_called_once_with()
+
+        streamlit.reset_mock()
+        streamlit.button.return_value = False
+        streamlit.chat_input.return_value = None
+        streamlit.form_submit_button.return_value = False
+        render_app(pdf_ingestion_provider=ingestion_provider)
+
+        streamlit.success.assert_any_call(expected_notice[1])
+        self.assertIsNone(streamlit.session_state.pdf_ingestion_notice)
+
+    @patch("local_rag.app.assess_readiness")
+    @patch("local_rag.app.st")
+    def test_pdf_ingestion_requires_a_selected_file(
+        self, streamlit: MagicMock, assess_readiness: MagicMock
+    ) -> None:
+        assess_readiness.return_value = MagicMock(ready=True, checks=[])
+        streamlit.session_state.__contains__.return_value = True
+        streamlit.session_state.messages = []
+        streamlit.session_state.pending_question = None
+        streamlit.button.return_value = False
+        streamlit.chat_input.return_value = None
+        streamlit.form_submit_button.return_value = True
+        streamlit.file_uploader.return_value = []
+        ingestion_provider = MagicMock()
+
+        render_app(pdf_ingestion_provider=ingestion_provider)
+
+        streamlit.warning.assert_any_call(
+            "Select at least one PDF before starting ingestion."
+        )
+        ingestion_provider.assert_not_called()
+        streamlit.rerun.assert_not_called()
+
+    @patch("local_rag.app.assess_readiness")
+    @patch("local_rag.app.st")
+    def test_pdf_validation_error_is_actionable_and_keeps_the_app_running(
+        self, streamlit: MagicMock, assess_readiness: MagicMock
+    ) -> None:
+        assess_readiness.return_value = MagicMock(ready=True, checks=[])
+        streamlit.session_state.__contains__.return_value = True
+        streamlit.session_state.messages = []
+        streamlit.session_state.pending_question = None
+        streamlit.button.return_value = False
+        streamlit.chat_input.return_value = None
+        streamlit.form_submit_button.return_value = True
+        uploaded = MagicMock()
+        uploaded.name = "scan.pdf"
+        uploaded.getvalue.return_value = b"%PDF-scan"
+        streamlit.file_uploader.return_value = [uploaded]
+        ingestion_provider = MagicMock(
+            side_effect=PdfIngestionError("scan.pdf requires OCR first.")
+        )
+
+        render_app(pdf_ingestion_provider=ingestion_provider)
+
+        streamlit.error.assert_any_call("The PDF upload could not be ingested.")
+        streamlit.caption.assert_any_call("scan.pdf requires OCR first.")
+        streamlit.rerun.assert_not_called()
+
+    @patch("local_rag.app.assess_readiness")
+    @patch("local_rag.app.st")
+    def test_duplicate_pdf_upload_reports_no_rebuild(
+        self, streamlit: MagicMock, assess_readiness: MagicMock
+    ) -> None:
+        assess_readiness.return_value = MagicMock(ready=True, checks=[])
+        streamlit.session_state.__contains__.return_value = True
+        streamlit.session_state.messages = []
+        streamlit.session_state.pending_question = None
+        streamlit.button.return_value = False
+        streamlit.chat_input.return_value = None
+        streamlit.form_submit_button.return_value = True
+        uploaded = MagicMock()
+        uploaded.name = "handbook.pdf"
+        uploaded.getvalue.return_value = b"%PDF-content"
+        streamlit.file_uploader.return_value = [uploaded]
+        ingestion_provider = MagicMock(
+            return_value=MagicMock(
+                uploaded_file_count=1,
+                extracted_page_count=2,
+                added_document_count=0,
+                skipped_duplicate_count=2,
+                index=None,
+            )
+        )
+
+        render_app(pdf_ingestion_provider=ingestion_provider)
+
+        expected_notice = (
+            "info",
+            "These PDF pages were already present; the index was not rebuilt.",
+        )
+        self.assertEqual(streamlit.session_state.pdf_ingestion_notice, expected_notice)
+        self.assertNotIn(call(expected_notice[1]), streamlit.info.call_args_list)
+        streamlit.rerun.assert_called_once_with()
+
+        streamlit.reset_mock()
+        streamlit.button.return_value = False
+        streamlit.chat_input.return_value = None
+        streamlit.form_submit_button.return_value = False
+        render_app(pdf_ingestion_provider=ingestion_provider)
+
+        streamlit.info.assert_any_call(expected_notice[1])
+        self.assertIsNone(streamlit.session_state.pdf_ingestion_notice)
 
     @patch("local_rag.app.assess_readiness")
     @patch("local_rag.app.st")

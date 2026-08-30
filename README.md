@@ -32,6 +32,8 @@ the locally retrieved chunks.
 
 ```mermaid
 flowchart LR
+    PDF[Uploaded text PDF] --> Extract[Extract page text locally]
+    Extract --> Corpus
     Corpus[JSONL documents] --> Validate[Validate every record]
     Validate --> Chunk[Split into chunks]
     Chunk --> Embed[Ollama embeddings]
@@ -112,6 +114,19 @@ Readiness must report that configuration, corpus, Ollama, both models, and the
 vector collection are available. The first readiness run may report the collection
 as missing; ingestion creates it.
 
+### Upload PDF documents
+
+Open the production app and use **Add PDF documents**. Upload one or more text-based PDFs,
+then select **Ingest PDFs**. Each file is limited to 20 MB. The app extracts non-empty
+pages locally, appends them to `datasets/data.txt`, and performs the same atomic full
+index rebuild used by the CLI. Existing JSONL documents remain in the corpus, and an
+identical PDF upload is skipped without rebuilding.
+
+Each extracted page receives a stable `local-pdf://` source containing the file hash,
+filename, and page number. The original PDF is not retained after extraction. Scanned
+PDFs require OCR before upload, and password-protected PDFs must first be unlocked.
+If extraction or indexing fails, the previous JSONL corpus and Chroma index are restored.
+
 ## Reproducible examples and evaluation
 
 The included Python corpus and `evaluation/questions.jsonl` make these scenarios
@@ -161,6 +176,7 @@ digests, and non-secret runtime configuration for comparison.
 | Two-stage claim grading | Confirms proposed unsupported claims semantically | Adds local inference latency during evaluation |
 | Metadata-derived citations | Prevents invented source URLs | Correctness still depends on retrieval and chunk quality |
 | Atomic full rebuild | Keeps the last valid index on failure | Requires temporary disk space during ingestion |
+| Page-level PDF extraction | Makes local uploads immediately queryable with page citations | Original files are not retained and OCR is not included |
 
 ## Quality checks
 
@@ -202,8 +218,8 @@ python -m pip check
   documents and a broader evaluation set.
 - Evaluation quality varies with local model version and hardware.
 - Chroma is local and single-user; there is no authentication or multi-tenant layer.
-- Supported input is JSONL text. PDF/HTML parsing and incremental ingestion are
-  natural next steps.
+- Supported input is JSONL and text-based PDF. HTML parsing, OCR, document deletion,
+  and incremental index updates remain future work.
 - Retrieval currently uses dense similarity only. Hybrid search and reranking could
   improve difficult corpora.
 - The UI is synchronous and optimized for a local demonstration, not concurrent load.
@@ -215,6 +231,8 @@ python -m pip check
 | `Cannot reach http://localhost:11434` | Start Ollama (`ollama serve`) and confirm `OLLAMA_BASE_URL`. |
 | A configured model is missing | Run `ollama pull mxbai-embed-large` and `ollama pull llama3.2:3b`. |
 | Collection is missing or empty | Run `python -m local_rag.ingestion`, then readiness again. |
+| A PDF reports no extractable text | Run OCR on the document, then upload the resulting searchable PDF. |
+| A PDF is password-protected or too large | Unlock it or reduce it below the 20 MB per-file limit before retrying. |
 | Configuration is invalid | Copy `.env.example` to `.env`; keep `CHUNK_OVERLAP < CHUNK_SIZE`. |
 | An answer is declined | Lowering the threshold may reduce precision; first inspect whether the corpus actually contains the answer. |
 | A rebuild fails | The prior active index remains intact; correct the dataset/model issue and rerun ingestion. |
@@ -222,7 +240,7 @@ python -m pip check
 ## Project map
 
 ```text
-local_rag/                 application, retrieval, workflow, ingestion, evaluation
+local_rag/                 application, retrieval, workflow, JSONL/PDF ingestion, evaluation
 datasets/data.txt          included JSONL sample corpus
 evaluation/questions.jsonl curated answerable and unanswerable cases
 portfolio_demo.py          deterministic read-only portfolio preview

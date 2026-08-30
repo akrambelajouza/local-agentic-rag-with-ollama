@@ -21,6 +21,7 @@ class ProjectMetadataTests(unittest.TestCase):
                 "langchain-ollama==0.3.3",
                 "langchain-text-splitters==0.3.8",
                 "pydantic==2.11.4",
+                "pypdf==6.16.2",
                 "python-dotenv==1.1.0",
                 "streamlit==1.45.1",
             ],
@@ -32,6 +33,9 @@ class ProjectMetadataTests(unittest.TestCase):
         self.assertIn("python -m local_rag.evaluation_cli", readme)
         self.assertIn("streamlit run app.py", readme)
         self.assertIn("python -m unittest discover -v", readme)
+        self.assertIn("Upload one or more text-based PDFs", readme)
+        self.assertIn("20 MB", readme)
+        self.assertIn("require OCR before upload", readme)
         self.assertEqual(
             metadata["project"]["scripts"]["local-rag-evaluate"],
             "local_rag.evaluation_cli:cli",

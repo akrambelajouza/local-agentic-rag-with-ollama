@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Streamlit multi-PDF upload with local page extraction, page-aware citations,
+  idempotent corpus updates, and rollback-safe full-index rebuilding.
+
 ## v1.0.0 — Portfolio release
 
 - Local-first Ollama and Chroma RAG workflow with verified source evidence.
