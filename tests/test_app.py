@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 from langchain_core.messages import AIMessage
 from streamlit.testing.v1 import AppTest
@@ -160,11 +160,23 @@ class StreamlitStartupTests(unittest.TestCase):
             [(upload.filename, upload.content) for upload in uploads],
             [("handbook.pdf", b"%PDF-content")],
         )
-        streamlit.success.assert_any_call(
-            "Ingested 1 PDF with 3 text pages and rebuilt the local index."
+        expected_notice = (
+            "success",
+            "Ingested 1 PDF with 3 text pages and rebuilt the local index.",
         )
+        self.assertEqual(streamlit.session_state.pdf_ingestion_notice, expected_notice)
+        self.assertNotIn(call(expected_notice[1]), streamlit.success.call_args_list)
         self.assertEqual(streamlit.session_state.messages, [])
         streamlit.rerun.assert_called_once_with()
+
+        streamlit.reset_mock()
+        streamlit.button.return_value = False
+        streamlit.chat_input.return_value = None
+        streamlit.form_submit_button.return_value = False
+        render_app(pdf_ingestion_provider=ingestion_provider)
+
+        streamlit.success.assert_any_call(expected_notice[1])
+        self.assertIsNone(streamlit.session_state.pdf_ingestion_notice)
 
     @patch("local_rag.app.assess_readiness")
     @patch("local_rag.app.st")
@@ -243,10 +255,22 @@ class StreamlitStartupTests(unittest.TestCase):
 
         render_app(pdf_ingestion_provider=ingestion_provider)
 
-        streamlit.info.assert_any_call(
-            "These PDF pages were already present; the index was not rebuilt."
+        expected_notice = (
+            "info",
+            "These PDF pages were already present; the index was not rebuilt.",
         )
+        self.assertEqual(streamlit.session_state.pdf_ingestion_notice, expected_notice)
+        self.assertNotIn(call(expected_notice[1]), streamlit.info.call_args_list)
         streamlit.rerun.assert_called_once_with()
+
+        streamlit.reset_mock()
+        streamlit.button.return_value = False
+        streamlit.chat_input.return_value = None
+        streamlit.form_submit_button.return_value = False
+        render_app(pdf_ingestion_provider=ingestion_provider)
+
+        streamlit.info.assert_any_call(expected_notice[1])
+        self.assertIsNone(streamlit.session_state.pdf_ingestion_notice)
 
     @patch("local_rag.app.assess_readiness")
     @patch("local_rag.app.st")

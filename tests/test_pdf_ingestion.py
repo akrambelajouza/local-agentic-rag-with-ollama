@@ -248,6 +248,48 @@ class PdfIngestionTests(unittest.TestCase):
                 "initial",
             )
 
+    def test_renaming_the_same_pdf_does_not_duplicate_its_pages(self) -> None:
+        with TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            settings = Settings(
+                embedding_model="embed-model",
+                chat_model="chat-model",
+                model_provider="ollama",
+                dataset_path=root / "data.txt",
+                database_location=root / "index",
+                collection_name="rag_data",
+            )
+            content = b"%PDF-identical-content"
+            reader = _Reader((_TextPage("Stable knowledge."),))
+
+            def initial_build(
+                candidate: Settings, destination: Path
+            ) -> tuple[int, int]:
+                count = len(load_documents(candidate.dataset_path))
+                (destination / "built.txt").write_text("initial", encoding="utf-8")
+                return count, count
+
+            with patch("local_rag.pdf_ingestion.PdfReader", return_value=reader):
+                ingest_pdf_uploads(
+                    settings,
+                    [PdfUpload("original.pdf", content)],
+                    build_index=initial_build,
+                )
+                summary = ingest_pdf_uploads(
+                    settings,
+                    [PdfUpload("renamed.pdf", content)],
+                    build_index=lambda *_: self.fail(
+                        "renamed duplicate must not rebuild"
+                    ),
+                )
+            documents = load_documents(settings.dataset_path)
+
+        self.assertEqual(summary.added_document_count, 0)
+        self.assertEqual(summary.skipped_duplicate_count, 1)
+        self.assertEqual(
+            [document.title for document in documents], ["original.pdf (page 1)"]
+        )
+
     def test_duplicate_files_in_one_upload_batch_are_indexed_once(self) -> None:
         with TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)

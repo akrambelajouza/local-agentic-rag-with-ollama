@@ -70,6 +70,7 @@ def render_app(
         st.session_state.messages = []
     if "pending_question" not in st.session_state:
         st.session_state.pending_question = None
+    _render_pdf_ingestion_notice()
 
     if not chat_enabled:
         st.info("This deterministic portfolio preview is read-only.")
@@ -201,15 +202,39 @@ def _render_pdf_ingestion(provider: PdfIngestionProvider) -> bool:
     st.session_state.pending_question = None
     get_assistant.clear()
     if summary.index is None:
-        st.info("These PDF pages were already present; the index was not rebuilt.")
+        st.session_state.pdf_ingestion_notice = (
+            "info",
+            "These PDF pages were already present; the index was not rebuilt.",
+        )
     else:
         file_label = "PDF" if summary.uploaded_file_count == 1 else "PDFs"
-        st.success(
+        st.session_state.pdf_ingestion_notice = (
+            "success",
             f"Ingested {summary.uploaded_file_count} {file_label} with "
-            f"{summary.extracted_page_count} text pages and rebuilt the local index."
+            f"{summary.extracted_page_count} text pages and rebuilt the local index.",
         )
     st.rerun()
     return True
+
+
+def _render_pdf_ingestion_notice() -> None:
+    """Show ingestion feedback once, after Streamlit completes its rerun."""
+
+    notice = getattr(st.session_state, "pdf_ingestion_notice", None)
+    if not (
+        isinstance(notice, tuple)
+        and len(notice) == 2
+        and notice[0] in {"success", "info"}
+        and isinstance(notice[1], str)
+    ):
+        return
+
+    kind, message = notice
+    st.session_state.pdf_ingestion_notice = None
+    if kind == "success":
+        st.success(message)
+    else:
+        st.info(message)
 
 
 def _message_citations(message: AIMessage) -> tuple[Citation, ...]:

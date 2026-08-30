@@ -10,7 +10,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import parse_qs, quote, urlparse
 
 from pypdf import PdfReader
 
@@ -63,12 +63,13 @@ def ingest_pdf_uploads(
     existing = (
         load_documents(settings.dataset_path) if settings.dataset_path.exists() else []
     )
-    known_ids = {document.document_id for document in existing}
+    known_ids = {_document_identity(document) for document in existing}
     added = []
     for document in extracted:
-        if document.document_id in known_ids:
+        identity = _document_identity(document)
+        if identity in known_ids:
             continue
-        known_ids.add(document.document_id)
+        known_ids.add(identity)
         added.append(document)
     skipped = len(extracted) - len(added)
     if not added and settings.database_location.exists():
@@ -112,7 +113,7 @@ def _extract_pdf_documents(upload: PdfUpload) -> list[CorpusDocument]:
             raise PdfIngestionError(
                 f"{filename} is password-protected; upload an unlocked PDF."
             )
-        digest = hashlib.sha256(upload.content).hexdigest()[:16]
+        digest = hashlib.sha256(upload.content).hexdigest()
         source = f"local-pdf://{digest}/{quote(filename)}"
         documents = []
         for page_number, page in enumerate(reader.pages, start=1):
@@ -141,26 +142,40 @@ def _safe_filename(filename: str) -> str:
     return cleaned or "uploaded.pdf"
 
 
+def _document_identity(document: CorpusDocument) -> str:
+    parsed = urlparse(document.url)
+    if parsed.scheme == "local-pdf" and parsed.netloc:
+        page = parse_qs(parsed.fragment).get("page", [""])[0]
+        if page:
+            return f"local-pdf:{parsed.netloc}:page={page}"
+    return document.document_id
+
+
 def _write_corpus_atomically(path: Path, documents: list[CorpusDocument]) -> None:
+    payload = "".join(
+        json.dumps(
+            {
+                "url": document.url,
+                "title": document.title,
+                "raw_text": document.raw_text,
+            },
+            ensure_ascii=False,
+        )
+        + "\n"
+        for document in documents
+    ).encode("utf-8")
+    _replace_file_atomically(path, payload)
+
+
+def _replace_file_atomically(path: Path, payload: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     handle, temporary_name = tempfile.mkstemp(
         prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
     )
     temporary = Path(temporary_name)
     try:
-        with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
-            for document in documents:
-                stream.write(
-                    json.dumps(
-                        {
-                            "url": document.url,
-                            "title": document.title,
-                            "raw_text": document.raw_text,
-                        },
-                        ensure_ascii=False,
-                    )
-                    + "\n"
-                )
+        with os.fdopen(handle, "wb") as stream:
+            stream.write(payload)
         temporary.replace(path)
     except Exception:
         temporary.unlink(missing_ok=True)
@@ -171,14 +186,4 @@ def _restore_corpus(path: Path, original: bytes | None) -> None:
     if original is None:
         path.unlink(missing_ok=True)
         return
-    handle, temporary_name = tempfile.mkstemp(
-        prefix=f".{path.name}.restore-", suffix=".tmp", dir=path.parent
-    )
-    temporary = Path(temporary_name)
-    try:
-        with os.fdopen(handle, "wb") as stream:
-            stream.write(original)
-        temporary.replace(path)
-    except Exception:
-        temporary.unlink(missing_ok=True)
-        raise
+    _replace_file_atomically(path, original)
