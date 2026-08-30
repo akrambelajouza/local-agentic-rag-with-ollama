@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from urllib.parse import parse_qs, unquote, urlparse
 
 import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
@@ -11,12 +12,19 @@ from langchain_core.messages import AIMessage, HumanMessage
 from local_rag.agent import build_assistant
 from local_rag.assistant import Citation, GroundedAssistant
 from local_rag.config import Settings, load_settings
+from local_rag.pdf_ingestion import (
+    PdfIngestionError,
+    PdfIngestionSummary,
+    PdfUpload,
+    ingest_pdf_uploads,
+)
 from local_rag.readiness import ReadinessReport, assess_readiness
 
 LOGGER = logging.getLogger(__name__)
 
 AssistantProvider = Callable[[Settings], GroundedAssistant]
 ReadinessProvider = Callable[[], ReadinessReport]
+PdfIngestionProvider = Callable[[Settings, list[PdfUpload]], PdfIngestionSummary]
 
 
 @st.cache_resource(show_spinner=False)
@@ -30,6 +38,7 @@ def render_app(
     *,
     assistant_provider: AssistantProvider | None = None,
     readiness_provider: ReadinessProvider | None = None,
+    pdf_ingestion_provider: PdfIngestionProvider | None = None,
     citations_expanded: bool = False,
     chat_enabled: bool = True,
 ) -> None:
@@ -57,13 +66,15 @@ def render_app(
         st.write(f"{icon} **{check.label}:** {check.detail}")
         if not check.ok and check.action:
             st.caption(f"Action: {check.action}")
-    if not chat_enabled:
-        st.info("This deterministic portfolio preview is read-only.")
-
     if "messages" not in st.session_state:
         st.session_state.messages = []
     if "pending_question" not in st.session_state:
         st.session_state.pending_question = None
+
+    if not chat_enabled:
+        st.info("This deterministic portfolio preview is read-only.")
+    elif _render_pdf_ingestion(pdf_ingestion_provider or ingest_pdf_uploads):
+        return
 
     if st.button(
         "Clear conversation",
@@ -152,6 +163,55 @@ def render_app(
     )
 
 
+def _render_pdf_ingestion(provider: PdfIngestionProvider) -> bool:
+    st.subheader("Add PDF documents")
+    st.caption(
+        "Upload text-based PDFs to add their pages to the local corpus. "
+        "Each file is limited to 20 MB; scanned PDFs require OCR first."
+    )
+    with st.form("pdf-ingestion", clear_on_submit=True):
+        uploaded_files = st.file_uploader(
+            "PDF files",
+            type=["pdf"],
+            accept_multiple_files=True,
+            help="Files stay on this machine and extracted text is stored in datasets/data.txt.",
+        )
+        submitted = st.form_submit_button("Ingest PDFs", type="primary")
+    if submitted is not True:
+        return False
+    if not uploaded_files:
+        st.warning("Select at least one PDF before starting ingestion.")
+        return False
+
+    uploads = [PdfUpload(file.name, file.getvalue()) for file in uploaded_files]
+    try:
+        with st.status("Extracting PDF text and rebuilding the index…", expanded=True):
+            summary = provider(load_settings(), uploads)
+    except PdfIngestionError as error:
+        st.error("The PDF upload could not be ingested.")
+        st.caption(str(error))
+        return False
+    except Exception:
+        LOGGER.exception("PDF ingestion failed")
+        st.error("The PDF index rebuild failed; the previous corpus remains available.")
+        st.caption("Check Ollama and the embedding model, then try the upload again.")
+        return False
+
+    st.session_state.messages = []
+    st.session_state.pending_question = None
+    get_assistant.clear()
+    if summary.index is None:
+        st.info("These PDF pages were already present; the index was not rebuilt.")
+    else:
+        file_label = "PDF" if summary.uploaded_file_count == 1 else "PDFs"
+        st.success(
+            f"Ingested {summary.uploaded_file_count} {file_label} with "
+            f"{summary.extracted_page_count} text pages and rebuilt the local index."
+        )
+    st.rerun()
+    return True
+
+
 def _message_citations(message: AIMessage) -> tuple[Citation, ...]:
     stored = message.additional_kwargs.get("citations", [])
     citations = (Citation.from_dict(item) for item in stored)
@@ -173,6 +233,17 @@ def _render_citations(
     st.markdown("**Sources**")
     for citation in citations:
         with st.expander(citation.title, expanded=expanded):
-            st.markdown(f"[{citation.url}]({citation.url})")
+            if citation.url.startswith("local-pdf://"):
+                st.caption(_local_pdf_source_label(citation.url))
+            else:
+                st.markdown(f"[{citation.url}]({citation.url})")
             if citation.excerpt:
                 st.caption(citation.excerpt)
+
+
+def _local_pdf_source_label(url: str) -> str:
+    parsed = urlparse(url)
+    filename = unquote(parsed.path.rsplit("/", 1)[-1]) or "uploaded PDF"
+    page = parse_qs(parsed.fragment).get("page", [""])[0]
+    suffix = f" · page {page}" if page else ""
+    return f"Local PDF: {filename}{suffix}"
